@@ -5,6 +5,8 @@ import { Layout } from './components/Layout';
 import { Health } from './pages/Health';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { SecuritySetup } from './pages/SecuritySetup';
+import { AdminLayout } from './pages/admin/AdminLayout';
 import { LmsLanding } from './pages/LmsLanding';
 import { NotFound } from './pages/NotFound';
 
@@ -18,6 +20,8 @@ export const routes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <RequireAuth><Home /></RequireAuth> },
+      { path: 'setup', element: <RequireAuth><SecuritySetup /></RequireAuth> },
+      { path: 'admin/*', element: <RequireAuth><AdminLayout /></RequireAuth> },
       { path: 'login', element: <Login /> },
       { path: 'lms', element: <LmsLanding /> },
       { path: 'health', element: <Health /> },
