@@ -1,7 +1,7 @@
 # CLAUDE.md — ios (public frontend)
 
-The plan and task list live in the private sibling repo: `../ios-admin/PLAN.md` and `../ios-admin/docs/TASKS.md`.
-Read them first and follow the execution protocol in `../ios-admin/CLAUDE.md`.
+Claude Code runs from the `nibm/` root — see `../CLAUDE.md`. The plan, tasks and API contract live in the private sibling repo (`ios-admin/PLAN.md`, `ios-admin/docs/TASKS.md`, `ios-admin/docs/CONTRACT.md`); follow `ios-admin/CLAUDE.md`.
+Frontend code talks to the backend only through `src/api/` (mock + supabase adapters).
 
 ## Rules for this repo
 - PUBLIC repo: never commit secrets, real student data, real index numbers or emails.
