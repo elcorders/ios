@@ -1,4 +1,114 @@
-/** Admin area (S1.F3a / S1.F3b / S1.F4). */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { api } from '../../api';
+import type { AdminCohort } from '../../api/types';
+import { useAuth } from '../../auth/AuthProvider';
+import { messageFor } from '../../lib/errors';
+import { AdminContext } from './AdminContext';
+import { MembersPage } from './MembersPage';
+import { PendingPage } from './PendingPage';
+
+const STORAGE_KEY = 'ios.admin.cohort';
+
+function readStored(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(id: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, id);
+  } catch {
+    // storage unavailable: selection just is not remembered
+  }
+}
+
+/** Admin area. The "Not allowed" view is UX only; the backend enforces access. */
 export function AdminLayout() {
-  return <h1>Admin</h1>;
+  const { me } = useAuth();
+  if (!me?.is_admin) {
+    return (
+      <section>
+        <h1>Not allowed</h1>
+        <p>This area is for admins only.</p>
+      </section>
+    );
+  }
+  return <AdminArea />;
+}
+
+function AdminArea() {
+  const [cohorts, setCohorts] = useState<AdminCohort[] | null>(null);
+  const [selected, setSelected] = useState<string | null>(readStored);
+  const [error, setError] = useState<string | null>(null);
+
+  const reloadCohorts = useCallback(async () => {
+    const res = await api.adminListCohorts();
+    if (res.ok) {
+      setCohorts(res.data);
+      setError(null);
+    } else {
+      setError(messageFor(res.error));
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load
+    void reloadCohorts();
+  }, [reloadCohorts]);
+
+  const cohort = useMemo(() => {
+    if (!cohorts?.length) return null;
+    return cohorts.find((c) => c.id === selected) ?? cohorts.find((c) => c.status === 'active') ?? cohorts[0]!;
+  }, [cohorts, selected]);
+
+  if (error) return <p role="alert" className="error">{error}</p>;
+  if (!cohorts) return <p role="status">Loading…</p>;
+  if (!cohort) return <p>No cohorts yet.</p>;
+
+  const readOnly = cohort.status === 'archived';
+  const choose = (id: string) => {
+    setSelected(id);
+    writeStored(id);
+  };
+
+  return (
+    <AdminContext.Provider value={{ cohort, cohorts, readOnly, reloadCohorts }}>
+      <section className="stack">
+        <h1>Admin</h1>
+        <div className="field">
+          <label htmlFor="cohort-switcher">Cohort</label>
+          <select id="cohort-switcher" value={cohort.id} onChange={(e) => choose(e.target.value)}>
+            {cohorts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.code} ({c.batch}){c.status === 'archived' ? ' - archived' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        {readOnly ? (
+          <p role="status" className="banner">This cohort is archived and read-only.</p>
+        ) : null}
+        <nav aria-label="Admin" className="subnav">
+          <NavLink to="/admin/members">Members</NavLink>
+          <NavLink to="/admin/instructors">Instructors</NavLink>
+          <NavLink to="/admin/pending">Pending ({cohort.counts.pending})</NavLink>
+          <NavLink to="/admin/cohort">Cohort</NavLink>
+          <NavLink to="/admin/import">Import</NavLink>
+        </nav>
+        <Routes>
+          <Route index element={<Navigate to="members" replace />} />
+          <Route path="members" element={<MembersPage role="student" />} />
+          <Route path="instructors" element={<MembersPage role="instructor" />} />
+          <Route path="pending" element={<PendingPage />} />
+          <Route path="cohort" element={<p>Cohort settings arrive in a later step.</p>} />
+          <Route path="import" element={<p>Roster import arrives in a later step.</p>} />
+          <Route path="*" element={<p>Page not found.</p>} />
+        </Routes>
+      </section>
+    </AdminContext.Provider>
+  );
 }

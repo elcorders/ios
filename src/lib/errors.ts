@@ -10,6 +10,9 @@ const MESSAGES: Record<string, string> = {
   passkey_unsupported: 'This browser or device cannot use passkeys. Try an email code instead.',
   passkey_cancelled: 'Passkey sign-in was cancelled.',
   not_authenticated: 'Please sign in first.',
+  not_found: 'That record no longer exists. Refresh the page.',
+  conflict: 'That clashes with an existing record (for example the index number is already used).',
+  internal: 'Something went wrong on the server. Please try again.',
   forbidden: 'You do not have access to that.',
 };
 

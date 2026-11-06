@@ -32,3 +32,21 @@ button.link { border: none; background: none; text-decoration: underline; min-he
 .tabs [aria-selected='true'] { background: #1f2937; color: #fff; }
 .error { color: #b91c1c; }
 :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+
+/* Admin area */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+select { font: inherit; padding: 0.625rem 0.75rem; min-height: 2.75rem; border: 1px solid #9ca3af; border-radius: 0.375rem; background: #fff; }
+.row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.subnav { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.subnav a { padding: 0.5rem 0.75rem; border: 1px solid #1f2937; border-radius: 0.375rem; color: #1f2937; text-decoration: none; }
+.subnav a.active { background: #1f2937; color: #fff; }
+.banner { background: #fef3c7; border: 1px solid #f59e0b; padding: 0.5rem 0.75rem; border-radius: 0.375rem; margin: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.check { display: flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; }
+.table-wrap { overflow-x: auto; max-width: 100%; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #fff; }
+.table-wrap table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+.table-wrap th, .table-wrap td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.actions { display: flex; gap: 0.25rem; }
+.badge { display: inline-block; padding: 0 0.5rem; border-radius: 999px; background: #e5e7eb; font-size: 0.75rem; }
+.dialog-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: flex-start; justify-content: center; padding: 1rem; overflow-y: auto; z-index: 10; }
+.dialog { width: 100%; max-width: 28rem; }
