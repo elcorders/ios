@@ -30,7 +30,8 @@ describe('Login', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/not correct/);
     fireEvent.change(code, { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify code' }));
-    expect(await screen.findByText(/Signed in as/)).toHaveTextContent('student002@example.edu');
+    // student002 has no passkey or authenticator yet, so the security gate applies.
+    expect(await screen.findByRole('heading', { name: 'Secure your account' })).toBeInTheDocument();
   });
 
   it('email code for unknown email shows not-on-roster message', async () => {

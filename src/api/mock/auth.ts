@@ -11,12 +11,32 @@ const pendingEmails = new Set<string>();
 export function resetMockAuth(): void {
   currentEmail = null;
   pendingEmails.clear();
+  securityOverrides.clear();
 }
+
+const securityOverrides = new Map<string, Partial<MockUser['security']>>();
+
+/** Mock helper: record security factors for the signed-in user. Null when nobody is signed in. */
+export function updateCurrentMockSecurity(change: { addPasskey?: boolean; totp?: boolean }): boolean {
+  if (!currentEmail) return false;
+  const prev = securityOverrides.get(currentEmail) ?? {};
+  const base = findByEmail(currentEmail)?.security;
+  if (!base) return false;
+  securityOverrides.set(currentEmail, {
+    passkeys: (prev.passkeys ?? base.passkeys) + (change.addPasskey ? 1 : 0),
+    totp: change.totp ?? prev.totp ?? base.totp,
+  });
+  return true;
+}
+
+/** Email of the signed-in mock user (read by other mock modules). */
+export const getMockCurrentEmail = (): string | null => currentEmail;
 
 const findByEmail = (email: string): MockUser | undefined =>
   MOCK_USERS.find((u) => u.profile.email === email.trim().toLowerCase());
 
 function toMe(u: MockUser): Me {
+  const sec = { ...u.security, ...securityOverrides.get(u.profile.email) };
   return {
     profile: u.profile,
     is_admin: u.profile.is_admin,
@@ -31,7 +51,7 @@ function toMe(u: MockUser): Me {
           whatsapp_link: MOCK_COHORT.settings.whatsapp_link,
         }]
       : [],
-    security: { ...u.security, setup_complete: u.security.passkeys > 0 || u.security.totp },
+    security: { passkeys: sec.passkeys, totp: sec.totp, setup_complete: sec.passkeys > 0 || sec.totp },
   };
 }
 
