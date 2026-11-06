@@ -15,3 +15,20 @@ body {
 .app-name { font-weight: 700; font-size: 1.125rem; }
 .app-main { flex: 1; width: 100%; max-width: 48rem; margin: 0 auto; padding: 1rem; }
 @media (min-width: 640px) { .app-main { padding: 2rem; } }
+
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; }
+.stack { display: flex; flex-direction: column; gap: 0.75rem; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field label { font-weight: 600; }
+input { font: inherit; padding: 0.625rem 0.75rem; border: 1px solid #9ca3af; border-radius: 0.375rem; min-height: 2.75rem; }
+input[readonly] { background: #f3f4f6; }
+.code-input { letter-spacing: 0.4em; font-size: 1.25rem; text-align: center; }
+button { font: inherit; min-height: 2.75rem; padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid #1f2937; background: #fff; color: #1f2937; cursor: pointer; }
+button.primary, form button[type='submit'] { background: #1f2937; color: #fff; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.link { border: none; background: none; text-decoration: underline; min-height: 2.25rem; }
+.tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.tabs [role="tab"] { flex: 1 1 auto; }
+.tabs [aria-selected='true'] { background: #1f2937; color: #fff; }
+.error { color: #b91c1c; }
+:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }

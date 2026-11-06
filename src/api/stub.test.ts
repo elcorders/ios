@@ -3,7 +3,7 @@ import { mockApi } from './mock';
 
 describe('S1 stubs', () => {
   it('return not_implemented instead of throwing', async () => {
-    const r = await mockApi.getMe();
+    const r = await mockApi.adminListCohorts();
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error.code).toBe('not_implemented');
   });
