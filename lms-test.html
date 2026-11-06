@@ -34,11 +34,11 @@
 <pre id="out"></pre>
 </main>
 <script>
-const expected=["k","c","username","idnumber","email","first","last","course","mobile","dept","cmid"];
+const expected=["k","c","username","idnumber","email","first","last","course","mobile","phone","dept","cmid"];
 const q=new URLSearchParams(location.search);
 const h=location.hash||"";
 const hq=new URLSearchParams(h.includes("?")?h.slice(h.indexOf("?")+1):"");
-const mask=v=>v==null?"":(v.length<=4?"****":v.slice(0,2)+"…"+v.slice(-2)+" ("+v.length+" chars)");
+const mask=v=>v==null?"":v===""?"(empty)":(v.length<=4?"****":v.slice(0,2)+"…"+v.slice(-2)+" ("+v.length+" chars)");
 const exp=document.getElementById("exp");
 const rows=[];
 for(const p of expected){
