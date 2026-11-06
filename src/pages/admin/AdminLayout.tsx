@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { api } from '../../api';
 import type { AdminCohort } from '../../api/types';
+import { CohortSettingsPage } from './CohortSettingsPage';
+import { ImportPage } from './ImportPage';
 import { useAuth } from '../../auth/AuthProvider';
 import { messageFor } from '../../lib/errors';
 import { AdminContext } from './AdminContext';
@@ -104,8 +106,8 @@ function AdminArea() {
           <Route path="members" element={<MembersPage role="student" />} />
           <Route path="instructors" element={<MembersPage role="instructor" />} />
           <Route path="pending" element={<PendingPage />} />
-          <Route path="cohort" element={<p>Cohort settings arrive in a later step.</p>} />
-          <Route path="import" element={<p>Roster import arrives in a later step.</p>} />
+          <Route path="cohort" element={<CohortSettingsPage />} />
+          <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>
       </section>
