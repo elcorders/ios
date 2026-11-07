@@ -61,6 +61,16 @@ describe('error mapping', () => {
 });
 
 describe('rpc methods', () => {
+  it('submitSurvey and adminListSurvey call the S2 RPCs', async () => {
+    mocks.rpc.mockResolvedValue({ data: { has_mac: true, submitted_at: 'x', group_no: 2, group_name: 'Group 2' }, error: null });
+    const r = await supabaseApi.submitSurvey('c1', true);
+    expect(mocks.rpc).toHaveBeenCalledWith('submit_survey', { p_cohort_id: 'c1', p_has_mac: true });
+    expect(r.ok && r.data.group_no).toBe(2);
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'cohort_archived', details: 'x', hint: null } });
+    const e = await supabaseApi.adminListSurvey('c1');
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_list_survey', { p_cohort_id: 'c1' });
+    expect(!e.ok && e.error.code).toBe('cohort_archived');
+  });
   it('lmsLanding maps params to p_ args', async () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'pending', cohort_code: '25.2', email: 'a@example.edu' }, error: null });
     const r = await supabaseApi.lmsLanding({ key: 'k', course_id: '1', email: 'a@example.edu', first: 'A' });
