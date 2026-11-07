@@ -18,7 +18,7 @@ beforeEach(() => {
 const enrol = (over: Partial<MyEnrolment>): MyEnrolment => ({
   enrolment_id: 'e1', cohort_id: 'c1', cohort_code: '25.2', cohort_status: 'active',
   role: 'student', status: 'active', whatsapp_link: 'https://chat.whatsapp.com/abc',
-  survey_done: true, mac_tier: null, group_no: null, group_name: null, ...over,
+  survey_done: true, group_no: null, group_name: null, ...over,
 });
 
 describe('parseWhatsAppLink', () => {

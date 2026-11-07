@@ -53,7 +53,6 @@ function toMe(u: MockUser): Me {
           whatsapp_link: getMockCohortWhatsApp(MOCK_COHORT.id) ?? MOCK_COHORT.settings.whatsapp_link,
           // S2 fields: survey state is mocked in S2.F1; until then nobody is gated.
           survey_done: true,
-          mac_tier: null,
           group_no: null,
           group_name: null,
         }]

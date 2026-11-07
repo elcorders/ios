@@ -8,8 +8,7 @@ const S1_METHODS = [
   'listMembers', 'adminUpdateProfile', 'adminSetEnrolmentStatus',
   'rosterImport', 'adminListPending', 'approvePending', 'rejectPending', 'adminResetSecurity',
   // S2
-  'getMySurvey', 'submitSurvey', 'adminListSurvey', 'adminUpdateSurvey', 'adminSetTier',
-  'getGrouping', 'groupingPreview', 'groupingPin', 'groupingLock', 'groupingUnlock', 'adminSetGroup',
+  'submitSurvey', 'adminListSurvey',
 ] as const satisfies readonly (keyof (S1Api & S2Api))[];
 
 // Compile-time check that S1_METHODS lists every S1Api + S2Api method.

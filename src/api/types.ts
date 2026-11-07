@@ -33,10 +33,8 @@ export type PendingStatus = 'pending' | 'approved' | 'rejected';
 
 export interface CohortSettings {
   whatsapp_link: string | null;
-  /** S2: default group count (absent → 6). */
+  /** S2: number of groups for auto-assignment (absent → 6). */
   group_count?: number;
-  /** S2: own Mac with macOS major ≥ this → tier A (absent → 15). */
-  tier_a_min_macos?: number;
 }
 
 export interface Cohort {
@@ -84,8 +82,6 @@ export interface MyEnrolment {
   whatsapp_link: string | null;
   /** S2: student has a survey response (always true for instructors). */
   survey_done: boolean;
-  mac_tier: MacTier | null;
-  /** S2: only while the cohort's grouping is locked. */
   group_no: number | null;
   group_name: string | null;
 }
@@ -251,97 +247,33 @@ export interface S1Api {
 
 // ───────────────────────── S2 — Survey and grouping (CONTRACT.md §S2) ─────────────────────────
 
-export type MacAccess = 'own' | 'shared' | 'none';
-export type MacTier = 'A' | 'B' | 'C';
-export type GroupingState = 'none' | 'draft' | 'locked';
-
-export interface SurveyAnswers {
-  mac_access: MacAccess;
-  mac_model: string | null;
-  /** macOS major (26, 15, 14, 13, 12 = older) or null = don't know. */
-  macos_major: number | null;
-  has_iphone: boolean;
-  time_constraint: boolean;
-  time_constraint_note: string | null;
-  phone: string;
-  whatsapp_opt_in: boolean;
-}
-
-export interface SurveyResponse extends SurveyAnswers {
-  enrolment_id: Uuid;
-  cohort_id: Uuid;
-  mac_tier: MacTier;
-  mac_tier_override: boolean;
+/** submit_survey result: the stored answer and the auto-assigned group. */
+export interface SurveySubmitResult {
+  has_mac: boolean;
   submitted_at: IsoDateTime;
-  updated_at: IsoDateTime;
+  group_no: number;
+  group_name: string;
 }
 
-export interface SurveyRow {
+export interface SurveyOverviewRow {
   enrolment_id: Uuid;
-  user_id: Uuid;
   email: string;
   index_no: string | null;
   first_name: string;
   last_name: string;
-  mac_tier: MacTier | null;
-  mac_tier_override: boolean;
+  has_mac: boolean | null;
+  submitted_at: IsoDateTime | null;
   group_no: number | null;
-  response: SurveyResponse | null;
 }
 
-export interface TierChange {
-  enrolment_id: Uuid;
-  mac_tier: MacTier | null;
-  mac_tier_override: boolean;
+export interface SurveyOverview {
+  counts: { students: number; answered: number; has_mac: number; no_mac: number };
+  groups: { no: number; name: string; size: number; has_mac: number; no_mac: number }[];
+  rows: SurveyOverviewRow[];
 }
-
-export interface GroupMember {
-  enrolment_id: Uuid;
-  first_name: string;
-  last_name: string;
-  index_no: string | null;
-  mac_tier: MacTier | null;
-  has_iphone: boolean | null;
-  time_constraint: boolean | null;
-  time_constraint_note: string | null;
-  pinned_group: number | null;
-}
-
-export interface GroupSummary {
-  no: number;
-  name: string;
-  size: number;
-  tiers: { A: number; B: number; C: number; none: number };
-  iphones: number;
-  pinned: number;
-  members: GroupMember[];
-}
-
-export interface Grouping {
-  state: GroupingState;
-  seed: number | null;
-  group_count: number;
-  updated_at: IsoDateTime | null;
-  locked_at: IsoDateTime | null;
-  groups: GroupSummary[];
-  unassigned: GroupMember[];
-  warnings: { not_surveyed: number; time_constraints_unpinned: number };
-}
-
-/** Error codes S2 screens handle (in addition to S1ErrorCode). */
-export type S2ErrorCode = 'invalid_phone' | 'grouping_locked' | 'no_draft' | 'not_locked' | 'invalid_group';
 
 /** S2 methods (CONTRACT.md §S2 "Frontend Api methods"). */
 export interface S2Api {
-  getMySurvey(cohortId: Uuid): Promise<Result<SurveyResponse | null>>;
-  submitSurvey(cohortId: Uuid, answers: SurveyAnswers): Promise<Result<SurveyResponse>>;
-  adminListSurvey(cohortId: Uuid): Promise<Result<SurveyRow[]>>;
-  adminUpdateSurvey(enrolmentId: Uuid, answers: SurveyAnswers): Promise<Result<SurveyResponse>>;
-  adminSetTier(enrolmentId: Uuid, tier: MacTier | null): Promise<Result<TierChange>>;
-  getGrouping(cohortId: Uuid): Promise<Result<Grouping>>;
-  groupingPreview(cohortId: Uuid, groupCount?: number | null, seed?: number | null): Promise<Result<Grouping>>;
-  groupingPin(cohortId: Uuid, enrolmentId: Uuid, groupNo: number | null): Promise<Result<Grouping>>;
-  groupingLock(cohortId: Uuid): Promise<Result<Grouping>>;
-  groupingUnlock(cohortId: Uuid): Promise<Result<Grouping>>;
-  adminSetGroup(enrolmentId: Uuid, groupNo: number | null): Promise<Result<Grouping>>;
+  submitSurvey(cohortId: Uuid, hasMac: boolean): Promise<Result<SurveySubmitResult>>;
+  adminListSurvey(cohortId: Uuid): Promise<Result<SurveyOverview>>;
 }

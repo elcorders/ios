@@ -14,7 +14,7 @@ describe('S2 stubs', () => {
     const { mockApi } = await import('./mock');
     const { supabaseApi } = await import('./supabase');
     for (const a of [mockApi, supabaseApi]) {
-      const r = await a.getGrouping('c1');
+      const r = await a.adminListSurvey('c1');
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.error.code).toBe('not_implemented');
     }
