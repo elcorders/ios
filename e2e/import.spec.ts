@@ -23,5 +23,5 @@ test('admin imports a generated CSV and sees the member', async ({ page }) => {
   await expect(page.getByText(/Import applied: 1 added/)).toBeVisible();
 
   await page.getByRole('link', { name: 'View students' }).click();
-  await expect(page.getByText('student085@example.edu')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'student085@example.edu' })).toBeVisible();
 });

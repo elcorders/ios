@@ -28,7 +28,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/api/supabase/**/*.ts'],
+    files: ['src/api/supabase/**/*.ts', 'e2e-dev/**/*.ts'],
     rules: { 'no-restricted-imports': 'off' },
+  },
+  {
+    files: ['e2e-dev/**/*.ts', 'playwright*.ts'],
+    languageOptions: { globals: { ...globals.node } },
   },
 );

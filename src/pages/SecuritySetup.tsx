@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api } from '../api';
@@ -66,11 +66,15 @@ function TotpSetup({ onDone }: { onDone: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // One enrol per mount: StrictMode re-runs effects, and two enrols would replace the pending secret.
+  const enrolRequest = useRef<ReturnType<typeof api.totpEnrol> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    enrolRequest.current ??= api.totpEnrol();
+    const request = enrolRequest.current;
     void (async () => {
-      const res = await api.totpEnrol();
+      const res = await request;
       if (cancelled) return;
       if (!res.ok) {
         setError(messageFor(res.error));
