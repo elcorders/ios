@@ -10,13 +10,10 @@ describe('S1 stubs', () => {
 });
 
 describe('S2 stubs', () => {
-  it('both adapters return not_implemented for S2 until F/I tasks', async () => {
-    const { mockApi } = await import('./mock');
+  it('the supabase adapter returns not_implemented for S2 until S2.I', async () => {
     const { supabaseApi } = await import('./supabase');
-    for (const a of [mockApi, supabaseApi]) {
-      const r = await a.adminListSurvey('c1');
-      expect(r.ok).toBe(false);
-      if (!r.ok) expect(r.error.code).toBe('not_implemented');
-    }
+    const r = await supabaseApi.adminListSurvey('c1');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe('not_implemented');
   });
 });

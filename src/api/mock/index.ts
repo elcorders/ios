@@ -3,12 +3,14 @@ import { notImplemented } from '../stub';
 import { mockAdmin } from './admin';
 import { mockAuth } from './auth';
 import { mockSecurity } from './security';
+import { mockSurvey } from './survey';
 
 export const mockApi: Api = {
   ...notImplemented('mock'),
   ...mockAuth,
   ...mockSecurity,
   ...mockAdmin,
+  ...mockSurvey,
   async health() {
     return { ok: true, data: { adapter: 'mock', ok: true } };
   },

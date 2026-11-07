@@ -1,6 +1,7 @@
 import type { ApiError, Me, Result, S1Api } from '../types';
 import { MOCK_CODE, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS, type MockUser } from './fixtures/s1';
 import { getMockCohortWhatsApp, resetMockCohortState } from './cohortState';
+import { resetMockSurvey, surveyInfoFor } from './survey';
 
 const ok = <T>(data: T): Result<T> => ({ ok: true, data });
 const fail = <T>(code: string, message = code): Result<T> => ({ ok: false, error: { code, message } satisfies ApiError });
@@ -14,6 +15,7 @@ export function resetMockAuth(): void {
   pendingEmails.clear();
   securityOverrides.clear();
   resetMockCohortState();
+  resetMockSurvey();
 }
 
 const securityOverrides = new Map<string, Partial<MockUser['security']>>();
@@ -51,10 +53,7 @@ function toMe(u: MockUser): Me {
           role: u.role,
           status: 'active',
           whatsapp_link: getMockCohortWhatsApp(MOCK_COHORT.id) ?? MOCK_COHORT.settings.whatsapp_link,
-          // S2 fields: survey state is mocked in S2.F1; until then nobody is gated.
-          survey_done: true,
-          group_no: null,
-          group_name: null,
+          ...surveyInfoFor(`enrol-${u.profile.id}`, u.role),
         }]
       : [],
     security: { passkeys: sec.passkeys, totp: sec.totp, setup_complete: sec.passkeys > 0 || sec.totp },

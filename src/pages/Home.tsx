@@ -13,6 +13,13 @@ export function Home() {
       <p>
         Signed in as <strong>{name}</strong> ({me.profile.email})
       </p>
+      {me.enrolments
+        .filter((e) => e.role === 'student' && e.status === 'active' && e.group_name)
+        .map((e) => (
+          <p key={e.enrolment_id}>
+            Your group: <strong>{e.group_name}</strong>
+          </p>
+        ))}
       <WhatsAppCard enrolments={me.enrolments} />
       <button
         type="button"

@@ -8,6 +8,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { messageFor } from '../../lib/errors';
 import { AdminContext } from './AdminContext';
 import { MembersPage } from './MembersPage';
+import { SurveyPage } from './SurveyPage';
 import { PendingPage } from './PendingPage';
 
 const STORAGE_KEY = 'ios.admin.cohort';
@@ -99,6 +100,7 @@ function AdminArea() {
           <NavLink to="/admin/instructors">Instructors</NavLink>
           <NavLink to="/admin/pending">Pending ({cohort.counts.pending})</NavLink>
           <NavLink to="/admin/cohort">Cohort</NavLink>
+          <NavLink to="/admin/survey">Survey</NavLink>
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
         <Routes>
@@ -107,6 +109,7 @@ function AdminArea() {
           <Route path="instructors" element={<MembersPage role="instructor" />} />
           <Route path="pending" element={<PendingPage />} />
           <Route path="cohort" element={<CohortSettingsPage />} />
+          <Route path="survey" element={<SurveyPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>
