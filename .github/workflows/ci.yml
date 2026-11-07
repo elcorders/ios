@@ -60,11 +60,20 @@ jobs:
       group: pages
       cancel-in-progress: false
     env:
-      # Mock adapter until the Supabase adapter is switched on. Later the
-      # publishable URL/key are supplied as repo variables (never secrets).
-      VITE_API: mock
+      # Production: real Supabase adapter. URL + publishable key are public values,
+      # kept as repo variables (Settings → Secrets and variables → Actions → Variables).
+      VITE_API: supabase
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_COMMIT_SHA: ${{ github.sha }}
     steps:
+      - name: Require production variables
+        run: |
+          [ -n "$VITE_SUPABASE_URL" ] || { echo "::error::Repo variable VITE_SUPABASE_URL is not set"; exit 1; }
+          case "$VITE_SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_*) ;;
+            *) echo "::error::Repo variable VITE_SUPABASE_PUBLISHABLE_KEY must be the sb_publishable_ key"; exit 1 ;;
+          esac
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
