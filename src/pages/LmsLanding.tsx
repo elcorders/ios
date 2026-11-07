@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { LmsLandingParams, LmsLandingResult, Result } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { EmailCodeFlow } from '../components/EmailCodeFlow';
 import { messageFor } from '../lib/errors';
 import { normaliseLkPhone } from '../lib/phone';
+import { PasskeyPanel } from './Login';
 
 export const PREFILL_KEY = 'ios.prefill';
 
@@ -71,11 +72,13 @@ export function LmsLanding() {
   const [state, setState] = useState<State>(
     link.params ? { step: 'loading' } : { step: 'error', message: messageFor({ code: 'invalid_link' }) },
   );
-  const { refresh } = useAuth();
+  const { me, loading, refresh } = useAuth();
   const navigate = useNavigate();
+  // Already signed in on this device: no landing check, no email code — go Home (RequireAuth applies the gates).
+  const signedIn = !loading && me !== null;
 
   useEffect(() => {
-    if (!link.params) return;
+    if (!link.params || loading || me) return;
     let live = true;
     link.promise ??= api.lmsLanding(link.params);
     void link.promise.then((res) => {
@@ -85,14 +88,15 @@ export function LmsLanding() {
     return () => {
       live = false;
     };
-  }, [link]);
+  }, [link, loading, me]);
 
   async function verified() {
     await refresh();
     navigate('/', { replace: true });
   }
 
-  if (state.step === 'loading') return <p role="status">Checking your link…</p>;
+  if (signedIn) return <Navigate to="/" replace />;
+  if (loading || state.step === 'loading') return <p role="status">Checking your link…</p>;
   if (state.step === 'error') {
     return (
       <section className="card">
@@ -114,6 +118,11 @@ export function LmsLanding() {
     <section className="card">
       <h1>Welcome to class {state.result.cohort_code}</h1>
       {name && <p>Name: <strong>{name}</strong></p>}
+      <h2>Already set up?</h2>
+      <PasskeyPanel onDone={() => void verified()} />
+      <p><Link to="/login">Use an authenticator app instead</Link></p>
+      <h2>First time here?</h2>
+      <p>We'll email you a 6-digit code.</p>
       <EmailCodeFlow idPrefix="lms" fixedEmail={state.result.email} onVerified={() => void verified()} />
     </section>
   );

@@ -50,7 +50,7 @@ export function Login() {
   );
 }
 
-function PasskeyPanel({ onDone }: { onDone: () => void }) {
+export function PasskeyPanel({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function go() {
@@ -69,7 +69,7 @@ function PasskeyPanel({ onDone }: { onDone: () => void }) {
   );
 }
 
-function TotpPanel({ onDone }: { onDone: () => void }) {
+export function TotpPanel({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);

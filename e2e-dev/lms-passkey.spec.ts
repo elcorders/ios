@@ -34,4 +34,17 @@ test('LMS link -> email code -> passkey setup -> sign out -> passkey sign-in', a
   await page.getByRole('button', { name: 'Sign in with passkey' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
   await expect(page.getByText(user.email)).toBeVisible();
+
+  // LMS link again while signed in: straight Home, no email code step.
+  await page.goto(`/#/lms?${q.toString()}`);
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send code' })).toHaveCount(0);
+
+  // LMS link while signed out: passkey sign-in right on the LMS page.
+  await signOut(page);
+  await page.goto(`/#/lms?${q.toString()}`);
+  await expect(page.getByRole('heading', { name: /Welcome to class 25\.2/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in with passkey' }).click();
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  await expect(page.getByText(user.email)).toBeVisible();
 });
