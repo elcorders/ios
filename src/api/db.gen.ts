@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       audit_log: {
@@ -156,6 +131,7 @@ export type Database = {
         Row: {
           cohort_id: string
           created_at: string
+          group_id: string | null
           id: string
           role: Database["public"]["Enums"]["enrolment_role"]
           status: Database["public"]["Enums"]["enrolment_status"]
@@ -165,6 +141,7 @@ export type Database = {
         Insert: {
           cohort_id: string
           created_at?: string
+          group_id?: string | null
           id?: string
           role: Database["public"]["Enums"]["enrolment_role"]
           status?: Database["public"]["Enums"]["enrolment_status"]
@@ -174,6 +151,7 @@ export type Database = {
         Update: {
           cohort_id?: string
           created_at?: string
+          group_id?: string | null
           id?: string
           role?: Database["public"]["Enums"]["enrolment_role"]
           status?: Database["public"]["Enums"]["enrolment_status"]
@@ -189,10 +167,49 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "enrolments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "enrolments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          id: string
+          name: string
+          no: number
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          id?: string
+          name: string
+          no: number
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
             referencedColumns: ["id"]
           },
         ]
@@ -317,6 +334,52 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_responses: {
+        Row: {
+          cohort_id: string
+          enrolment_id: string
+          has_mac: boolean
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          cohort_id: string
+          enrolment_id: string
+          has_mac: boolean
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          cohort_id?: string
+          enrolment_id?: string
+          has_mac?: boolean
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_responses_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_enrolment_id_fkey"
+            columns: ["enrolment_id"]
+            isOneToOne: true
+            referencedRelation: "enrolments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       totp_attempts: {
         Row: {
           created_at: string
@@ -392,6 +455,7 @@ export type Database = {
         }
         Returns: Json[]
       }
+      admin_list_survey: { Args: { p_cohort_id: string }; Returns: Json }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }
       admin_set_enrolment_status: {
         Args: {
@@ -526,6 +590,10 @@ export type Database = {
       }
       roster_lookup_user: { Args: { p_email: string }; Returns: string }
       security_summary: { Args: { p_user_id: string }; Returns: Json }
+      submit_survey: {
+        Args: { p_cohort_id: string; p_has_mac: boolean }
+        Returns: Json
+      }
       totp_activate: {
         Args: { p_factor_id: string; p_step: number }
         Returns: boolean
@@ -681,9 +749,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       cohort_status: ["active", "archived"],

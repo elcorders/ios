@@ -65,5 +65,13 @@ test('admin imports a roster, approves a pending registration and resets securit
   await row.getByRole('button', { name: /^Reset security/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Reset' }).click();
   await expect(page.getByRole('row').filter({ hasText: target.email }).getByText('TOTP no')).toBeVisible();
+
+  // Survey tab (S2): the target answered "No" at the gate and has a group.
+  await page.getByRole('link', { name: 'Survey' }).click();
+  await expect(page.getByRole('heading', { name: 'Survey' })).toBeVisible();
+  await expect(page.getByText(/^Answered \d+ \/ \d+$/)).toBeVisible();
+  const srow = page.getByRole('row').filter({ hasText: target.email });
+  await expect(srow.getByRole('cell', { name: 'No', exact: true })).toBeVisible();
+  await expect(srow.getByRole('cell', { name: /^(Group )?\d+$/ })).toBeVisible();
   await ctx.close();
 });

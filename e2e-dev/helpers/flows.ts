@@ -39,7 +39,26 @@ export async function signInWithEmailCode(page: Page, email: string): Promise<vo
 export async function addPasskeyOnSetup(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Secure your account' })).toBeVisible();
   await page.getByRole('button', { name: 'Add a passkey' }).click();
+  await passSurveyGateIfAsked(page);
+}
+
+/** S2 gate: answer the one-question survey; returns the group name shown. Ends on Home. */
+export async function answerSurvey(page: Page, hasMac: boolean): Promise<string> {
+  await expect(page.getByRole('heading', { name: 'Quick question' })).toBeVisible();
+  await page.getByRole('button', { name: hasMac ? 'Yes' : 'No', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm' }).click();
+  const group = (await page.getByText(/You're in/).locator('strong').innerText()).trim();
+  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  return group;
+}
+
+/** After security setup a student who owes the survey lands on it; others go straight Home. */
+export async function passSurveyGateIfAsked(page: Page): Promise<void> {
+  const home = page.getByRole('heading', { name: 'Home' });
+  const survey = page.getByRole('heading', { name: 'Quick question' });
+  await expect(home.or(survey)).toBeVisible();
+  if (await survey.isVisible()) await answerSurvey(page, false);
 }
 
 export async function signOut(page: Page): Promise<void> {
@@ -55,7 +74,7 @@ export async function enrolTotpOnSetup(page: Page): Promise<{ secret: string; st
   const step = stepOf();
   await page.getByLabel('Authenticator code').fill(totp(secret, step));
   await page.getByRole('button', { name: 'Verify and finish' }).click();
-  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
+  await passSurveyGateIfAsked(page);
   return { secret, step };
 }
 
