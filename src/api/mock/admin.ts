@@ -1,7 +1,9 @@
 import type {
-  AdminCohort, Api, ApiError, Cohort, Member, PendingRegistration, Profile, Result,
+  AdminCohort, Api, ApiError, Cohort, Member, PendingRegistration, Profile, Result, RosterImportResult, RosterRow,
+  RosterRowErrorCode,
 } from '../types';
 import { getMockCurrentEmail } from './auth';
+import { resetMockCohortState, setMockCohortWhatsApp } from './cohortState';
 import {
   MOCK_ARCHIVED_COHORT, MOCK_ARCHIVED_COURSE_KEY, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS,
   seedEnrolments, seedPending, type MockEnrolment,
@@ -35,8 +37,22 @@ let state = seed();
 
 /** Test helper: restore the seeded admin data. */
 export function resetMockAdmin(): void {
+  resetMockCohortState();
   state = seed();
 }
+
+/** Phone formats 07XXXXXXXX, +947XXXXXXXX, 947XXXXXXXX (spaces/dashes ignored) → +947XXXXXXXX. */
+export function normalisePhone(raw: string): string | null {
+  const v = raw.replace(/[\s-]/g, '');
+  if (/^07\d{8}$/.test(v)) return `+94${v.slice(1)}`;
+  if (/^\+947\d{8}$/.test(v)) return v;
+  if (/^947\d{8}$/.test(v)) return `+${v}`;
+  return null;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_ROWS = 500;
+const NOW = '2026-06-01T09:00:00+05:30';
 
 const isAdmin = (): boolean => {
   const email = getMockCurrentEmail();
@@ -85,7 +101,7 @@ type AdminMethods = Pick<
   Api,
   | 'adminListCohorts' | 'adminUpsertCohort' | 'adminUpdateCohortSettings' | 'listMembers'
   | 'adminUpdateProfile' | 'adminSetEnrolmentStatus' | 'adminListPending' | 'approvePending'
-  | 'rejectPending' | 'adminResetSecurity'
+  | 'rejectPending' | 'adminResetSecurity' | 'rosterImport'
 >;
 
 export const mockAdmin: Partial<Api> & AdminMethods = {
@@ -122,6 +138,7 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
     const link = patch.whatsapp_link;
     if (link != null && !link.startsWith('https://chat.whatsapp.com/')) return fail('invalid_input');
     c.settings = { ...c.settings, ...patch };
+    setMockCohortWhatsApp(c.id, c.settings.whatsapp_link);
     return ok({ ...c.settings });
   }),
 
@@ -210,6 +227,103 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
     const result = { passkeys_removed: removePasskeys ? sec.passkeys : 0, totp_removed: removeTotp };
     if (removePasskeys) sec.passkeys = 0;
     if (removeTotp) sec.totp = false;
+    return ok(result);
+  }),
+
+  rosterImport: guard((input) => {
+    const cohort = cohortOf(input.cohort_id);
+    if (!cohort) return fail('not_found');
+    if (!Array.isArray(input.rows) || input.rows.length > MAX_ROWS) return fail('invalid_input');
+    if (input.role !== 'student' && input.role !== 'instructor') return fail('invalid_input');
+    if (cohort.status === 'archived') return fail('cohort_archived');
+
+    const result: RosterImportResult = {
+      dry_run: input.dry_run, add: [], update: [], unchanged: 0, not_in_file: [], errors: [], applied: false,
+    };
+    const seen = new Set<string>();
+    const fileIndex = new Map<string, string>(); // index_no -> email, within this file
+    const planned: { row: RosterRow; profile: Profile | undefined; changes: Record<string, [unknown, unknown]> }[] = [];
+
+    input.rows.forEach((raw, row_index) => {
+      const err = (code: RosterRowErrorCode, message: string) => result.errors.push({ row_index, code, message });
+      const email = (raw.email ?? '').trim().toLowerCase();
+      if (!EMAIL_RE.test(email)) return err('invalid_email', 'Email address is not valid');
+      if (!(raw.first_name ?? '').trim() || !(raw.last_name ?? '').trim()) return err('missing_name', 'First and last name are required');
+      if (seen.has(email)) return err('duplicate_in_file', 'Email appears more than once in the file');
+      let phone: string | undefined;
+      if ((raw.phone ?? '').trim()) {
+        const p = normalisePhone(raw.phone!);
+        if (!p) return err('invalid_phone', 'Phone number format is not valid');
+        phone = p;
+      }
+      const index_no = (raw.index_no ?? '').trim() || undefined;
+      if (index_no) {
+        const owner = [...state.profiles.values()].find((p) => p.index_no === index_no);
+        if ((owner && owner.email.toLowerCase() !== email) || (fileIndex.has(index_no) && fileIndex.get(index_no) !== email)) {
+          return err('index_conflict', 'Index number belongs to another email');
+        }
+        fileIndex.set(index_no, email);
+      }
+      seen.add(email);
+      const lms_username = (raw.lms_username ?? '').trim() || undefined;
+      const row: RosterRow = { email, first_name: raw.first_name.trim(), last_name: raw.last_name.trim() };
+      if (index_no) row.index_no = index_no;
+      if (lms_username) row.lms_username = lms_username;
+      if (phone) row.phone = phone;
+
+      const profile = [...state.profiles.values()].find((p) => p.email.toLowerCase() === email);
+      const changes: Record<string, [unknown, unknown]> = {};
+      const enrolment = profile && state.enrolments.find((e) => e.cohort_id === cohort.id && e.user_id === profile.id);
+      if (profile && enrolment) {
+        for (const f of ['index_no', 'first_name', 'last_name', 'lms_username', 'phone'] as const) {
+          const next = row[f];
+          if (next !== undefined && next !== profile[f]) changes[f] = [profile[f], next];
+        }
+        if (enrolment.role !== input.role) changes.role = [enrolment.role, input.role];
+        if (enrolment.status === 'removed') changes.status = ['removed', 'active'];
+        if (Object.keys(changes).length === 0) result.unchanged += 1;
+        else result.update.push({ row, changes });
+      } else {
+        result.add.push(row);
+      }
+      planned.push({ row, profile, changes });
+    });
+
+    result.not_in_file = state.enrolments
+      .filter((e) => e.cohort_id === cohort.id && e.role === input.role && e.status === 'active')
+      .filter((e) => !seen.has(state.profiles.get(e.user_id)!.email.toLowerCase()))
+      .map(toMember);
+
+    if (input.dry_run) return ok(result);
+
+    for (const { row, profile, changes } of planned) {
+      let p = profile;
+      if (!p) {
+        p = {
+          id: `00000000-0000-4000-8000-0000000007${String(state.profiles.size).padStart(2, '0')}`,
+          email: row.email, index_no: null, lms_username: null, first_name: row.first_name,
+          last_name: row.last_name, phone: null, whatsapp_opt_in: false, is_admin: false,
+          created_at: NOW, updated_at: NOW,
+        };
+        state.profiles.set(p.id, p);
+        state.security.set(p.id, { passkeys: 0, totp: false });
+      }
+      let enrolment = state.enrolments.find((e) => e.cohort_id === cohort.id && e.user_id === p.id);
+      if (!enrolment) {
+        enrolment = { id: `enrol-${cohort.id}-${p.id}`, cohort_id: cohort.id, user_id: p.id, role: input.role, status: 'active' };
+        state.enrolments.push(enrolment);
+      }
+      if (changes.role) enrolment.role = input.role;
+      if (changes.status) enrolment.status = 'active';
+      // Blank optional fields never clear stored values.
+      p.first_name = row.first_name;
+      p.last_name = row.last_name;
+      if (row.index_no) p.index_no = row.index_no;
+      if (row.lms_username) p.lms_username = row.lms_username;
+      if (row.phone) p.phone = row.phone;
+      p.updated_at = NOW;
+    }
+    result.applied = true;
     return ok(result);
   }),
 };
