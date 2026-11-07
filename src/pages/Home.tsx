@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { WhatsAppCard } from '../components/WhatsAppCard';
 import { useAuth } from '../auth/AuthProvider';
 
 export function Home() {
@@ -12,6 +13,7 @@ export function Home() {
       <p>
         Signed in as <strong>{name}</strong> ({me.profile.email})
       </p>
+      <WhatsAppCard enrolments={me.enrolments} />
       <button
         type="button"
         onClick={async () => {
