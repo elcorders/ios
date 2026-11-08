@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -491,4 +491,11 @@ export interface EmailChangeResult {
 /** S9 methods. */
 export interface S9Api {
   adminChangeEmail(userId: Uuid, email: string): Promise<Result<EmailChangeResult>>;
+}
+
+// ───────────────────────── S10 — Survey reset (CONTRACT.md §S10) ─────────────────────────
+
+/** S10 methods. Admin only; the student keeps their group and answers again. */
+export interface S10Api {
+  adminResetSurvey(cohortId: Uuid, enrolmentIds: Uuid[]): Promise<Result<{ reset: number }>>;
 }

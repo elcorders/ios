@@ -1,4 +1,4 @@
-import type { ApiError, Result, S2Api, SurveyOverview, SurveyOverviewRow, SurveySubmitResult } from '../types';
+import type { ApiError, Result, S10Api, S2Api, SurveyOverview, SurveyOverviewRow, SurveySubmitResult } from '../types';
 import { getMockCurrentEmail } from './auth';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS, seedEnrolments, type MockEnrolment } from './fixtures/s1';
 
@@ -39,7 +39,10 @@ function pickGroup(cohortId: string, hasMac: boolean): number {
 }
 
 function record(e: MockEnrolment, hasMac: boolean, submittedAt: string): Answer {
-  const a: Answer = { has_mac: hasMac, submitted_at: submittedAt, group_no: pickGroup(e.cohort_id, hasMac) };
+  // A student who already has a group (placed manually, or survey reset — S10) keeps it.
+  const kept = placed.get(e.id);
+  const a: Answer = { has_mac: hasMac, submitted_at: submittedAt, group_no: kept ?? pickGroup(e.cohort_id, hasMac) };
+  placed.delete(e.id);
   answers.set(e.id, a);
   return a;
 }
@@ -100,7 +103,7 @@ const currentUser = () => {
   return email ? MOCK_USERS.find((u) => u.profile.email === email) : undefined;
 };
 
-export const mockSurvey: S2Api = {
+export const mockSurvey: S2Api & S10Api = {
   async submitSurvey(cohortId, hasMac) {
     const user = currentUser();
     if (!user) return fail('not_authenticated');
@@ -136,7 +139,7 @@ export const mockSurvey: S2Api = {
         last_name: p.last_name,
         has_mac: a ? a.has_mac : null,
         submitted_at: a ? a.submitted_at : null,
-        group_no: a ? a.group_no : null,
+        group_no: a ? a.group_no : (placed.get(e.id) ?? null),
       };
     });
     rows.sort((x, y) => (x.index_no ?? '').localeCompare(y.index_no ?? '') || x.email.localeCompare(y.email));
@@ -153,7 +156,7 @@ export const mockSurvey: S2Api = {
         return {
           no: i + 1,
           name: `Group ${i + 1}`,
-          size: inGroup.length,
+          size: rows.filter((r) => r.group_no === i + 1).length,
           has_mac: inGroup.filter((r) => r.has_mac).length,
           no_mac: inGroup.filter((r) => !r.has_mac).length,
         };
@@ -161,5 +164,25 @@ export const mockSurvey: S2Api = {
       rows,
     };
     return ok(overview);
+  },
+
+  async adminResetSurvey(cohortId, enrolmentIds) {
+    const user = currentUser();
+    if (!user) return fail('not_authenticated');
+    if (!user.profile.is_admin) return fail('forbidden');
+    const ids = [...new Set(enrolmentIds ?? [])];
+    if (ids.length === 0 || ids.length > 500) return fail('invalid_input');
+    if (cohortId === MOCK_ARCHIVED_COHORT.id) return fail('cohort_archived');
+    const active = new Set(activeStudents(cohortId).map((e) => e.id));
+    if (ids.some((id) => !active.has(id))) return fail('not_found');
+    let reset = 0;
+    for (const id of ids) {
+      const a = answers.get(id);
+      if (!a) continue;
+      answers.delete(id);
+      placed.set(id, a.group_no); // keeps the group
+      reset += 1;
+    }
+    return ok({ reset });
   },
 };
