@@ -18,6 +18,8 @@ const SEED_ANSWERS: [number, boolean][] = [[1, true], [2, false], [3, true], [5,
 
 let enrolments: MockEnrolment[] = seedEnrolments();
 let answers = new Map<string, Answer>();
+/** S8: group of a student placed manually without a survey answer. */
+let placed = new Map<string, number>();
 
 const activeStudents = (cohortId: string) =>
   enrolments.filter((e) => e.cohort_id === cohortId && e.role === 'student' && e.status === 'active');
@@ -45,6 +47,7 @@ function record(e: MockEnrolment, hasMac: boolean, submittedAt: string): Answer 
 function seedState(): void {
   enrolments = seedEnrolments();
   answers = new Map();
+  placed = new Map();
   for (const [n, hasMac] of SEED_ANSWERS) {
     const email = `student${String(n).padStart(3, '0')}@example.edu`;
     const user = MOCK_USERS.find((u) => u.profile.email === email)!;
@@ -67,9 +70,29 @@ export function surveyInfoFor(enrolmentId: string, role: string): {
 } {
   if (role !== 'student') return { survey_done: true, group_no: null, group_name: null };
   const a = answers.get(enrolmentId);
-  return a
-    ? { survey_done: true, group_no: a.group_no, group_name: `Group ${a.group_no}` }
-    : { survey_done: false, group_no: null, group_name: null };
+  if (a) return { survey_done: true, group_no: a.group_no, group_name: `Group ${a.group_no}` };
+  const p = placed.get(enrolmentId);
+  return { survey_done: false, group_no: p ?? null, group_name: p ? `Group ${p}` : null };
+}
+
+export const MOCK_GROUP_COUNT = GROUP_COUNT;
+
+/** S8: a student's current group and survey answer (null = none). */
+export function mockGroupOf(enrolmentId: string): { group_no: number | null; has_mac: boolean | null } {
+  const a = answers.get(enrolmentId);
+  return a ? { group_no: a.group_no, has_mac: a.has_mac } : { group_no: placed.get(enrolmentId) ?? null, has_mac: null };
+}
+
+/** S8: move a student to another group (keeps the survey answer). */
+export function mockSetGroup(enrolmentId: string, groupNo: number): void {
+  const a = answers.get(enrolmentId);
+  if (a) a.group_no = groupNo;
+  else placed.set(enrolmentId, groupNo);
+}
+
+/** S8: active student enrolments of a cohort (shared with the transfers mock). */
+export function mockActiveStudents(cohortId: string): MockEnrolment[] {
+  return activeStudents(cohortId);
 }
 
 const currentUser = () => {

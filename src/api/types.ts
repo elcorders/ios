@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -36,6 +36,8 @@ export interface CohortSettings {
   whatsapp_link: string | null;
   /** S2: number of groups for auto-assignment (absent → 6). */
   group_count?: number;
+  /** S8: students may send transfer requests (absent → false). */
+  transfers_open?: boolean;
 }
 
 export interface Cohort {
@@ -361,4 +363,110 @@ export interface S6Api {
 export interface S7Api {
   /** 'discarded' from pending/rejected; 'pending' restores a discarded row. */
   adminSetPendingStatus(pendingId: Uuid, status: 'discarded' | 'pending'): Promise<Result<PendingRegistration>>;
+}
+
+// ───────────────────────── S8 — Group transfers + transfer emails (CONTRACT.md §S8) ─────────────────────────
+
+export type TransferStatus = 'open' | 'approved' | 'rejected' | 'cancelled';
+
+/** Group sizes (same shape as SurveyOverview.groups). size counts active students; has_mac/no_mac from the survey. */
+export interface GroupStat {
+  no: number;
+  name: string;
+  size: number;
+  has_mac: number;
+  no_mac: number;
+}
+
+export interface TransferRequest {
+  id: Uuid;
+  cohort_id: Uuid;
+  from_no: number;
+  pref1_no: number;
+  pref2_no: number;
+  reason: string;
+  status: TransferStatus;
+  decided_no: number | null;
+  admin_note: string | null;
+  closed_by: 'student' | 'admin' | null;
+  created_at: IsoDateTime;
+  decided_at: IsoDateTime | null;
+}
+
+export interface MyTransfers {
+  transfers_open: boolean;
+  group_no: number | null;
+  groups: { no: number; name: string }[];
+  /** Own requests, newest first. */
+  requests: TransferRequest[];
+}
+
+export interface RequestTransferInput {
+  cohortId: Uuid;
+  pref1No: number;
+  pref2No: number;
+  reason: string;
+}
+
+export interface AdminTransferRow extends TransferRequest {
+  enrolment_id: Uuid;
+  enrolment_status: EnrolmentStatus;
+  email: string;
+  index_no: string | null;
+  first_name: string;
+  last_name: string;
+  has_mac: boolean | null;
+  current_no: number | null;
+  decided_by_email: string | null;
+}
+
+export interface AdminTransfers {
+  transfers_open: boolean;
+  groups: GroupStat[];
+  /** All statuses, oldest first. */
+  requests: AdminTransferRow[];
+  outbox: { queued: number; failed: number };
+}
+
+export interface DecideTransferInput {
+  requestId: Uuid;
+  approve: boolean;
+  /** Required when approving. */
+  groupNo: number | null;
+  note: string | null;
+}
+
+export interface TransferDecision {
+  requests: AdminTransferRow[];
+  groups: GroupStat[];
+}
+
+export interface MoveStudentInput {
+  enrolmentId: Uuid;
+  groupNo: number;
+  note: string | null;
+}
+
+export interface MoveResult extends TransferDecision {
+  from_no: number | null;
+  to_no: number;
+}
+
+export interface OutboxSendResult {
+  sent: number;
+  failed: number;
+  skipped: number;
+  remaining: number;
+}
+
+/** S8 methods (CONTRACT.md §S8 "Frontend Api methods"). */
+export interface S8Api {
+  getMyTransfers(cohortId: Uuid): Promise<Result<MyTransfers>>;
+  requestTransfer(input: RequestTransferInput): Promise<Result<TransferRequest>>;
+  cancelTransfer(requestId: Uuid): Promise<Result<TransferRequest>>;
+  adminListTransfers(cohortId: Uuid): Promise<Result<AdminTransfers>>;
+  adminDecideTransfer(input: DecideTransferInput): Promise<Result<TransferDecision>>;
+  adminApproveSwap(requestA: Uuid, requestB: Uuid, note?: string | null): Promise<Result<TransferDecision>>;
+  adminMoveStudent(input: MoveStudentInput): Promise<Result<MoveResult>>;
+  adminSendOutbox(retryFailed?: boolean): Promise<Result<OutboxSendResult>>;
 }

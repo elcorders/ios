@@ -4,7 +4,7 @@ import type {
 } from '../types';
 import { getMockCurrentEmail } from './auth';
 import { surveyInfoFor } from './survey';
-import { resetMockCohortState, setMockCohortWhatsApp } from './cohortState';
+import { resetMockCohortState, setMockCohortWhatsApp, setMockTransfersOpen } from './cohortState';
 import {
   MOCK_ARCHIVED_COHORT, MOCK_ARCHIVED_COURSE_KEY, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS,
   seedEnrolments, seedPending, type MockEnrolment,
@@ -141,6 +141,7 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
     if (link != null && !link.startsWith('https://chat.whatsapp.com/')) return fail('invalid_input');
     c.settings = { ...c.settings, ...patch };
     setMockCohortWhatsApp(c.id, c.settings.whatsapp_link);
+    if (typeof c.settings.transfers_open === 'boolean') setMockTransfersOpen(c.id, c.settings.transfers_open);
     return ok({ ...c.settings });
   }),
 

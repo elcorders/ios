@@ -11,6 +11,18 @@ export function getMockCohortWhatsApp(cohortId: string): string | null | undefin
   return whatsapp.get(cohortId);
 }
 
+/** S8: transfers_open per cohort. Mock default is true for the active cohort so the student flow is reachable. */
+const transfersOpen = new Map<string, boolean>();
+
+export function setMockTransfersOpen(cohortId: string, open: boolean): void {
+  transfersOpen.set(cohortId, open);
+}
+
+export function getMockTransfersOpen(cohortId: string, fallback: boolean): boolean {
+  return transfersOpen.get(cohortId) ?? fallback;
+}
+
 export function resetMockCohortState(): void {
   whatsapp.clear();
+  transfersOpen.clear();
 }

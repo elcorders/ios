@@ -4,6 +4,7 @@ import { authMethods } from './auth';
 import { dataMethods } from './admin';
 import { surveyMethods } from './survey';
 import { contentMethods } from './content';
+import { transferMethods } from './transfers';
 
 /** Supabase adapter. The client is created lazily, on the first method call that needs it. */
 export const supabaseApi: Api = {
@@ -12,6 +13,7 @@ export const supabaseApi: Api = {
   ...dataMethods,
   ...surveyMethods,
   ...contentMethods,
+  ...transferMethods,
   async health() {
     return { ok: true, data: { adapter: 'supabase', ok: true } };
   },
