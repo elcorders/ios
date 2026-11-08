@@ -15,6 +15,7 @@ test('student without a Mac books a lab slot, sees it under My bookings and with
 
   // Find a day (from the strip) that has a free, bookable slot; today may be mostly in the past.
   const days = page.getByRole('group', { name: 'Day' }).getByRole('button');
+  await expect(days.first()).toBeVisible(); // calendar loads after getMyLab
   const count = await days.count();
   let picked = false;
   for (let i = 0; i < count && !picked; i++) {

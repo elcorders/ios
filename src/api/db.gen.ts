@@ -90,6 +90,71 @@ export type Database = {
           },
         ]
       }
+      bookings: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          enrolment_id: string
+          id: string
+          preferred_mac_id: string | null
+          slot_start: string
+          status: Database["public"]["Enums"]["booking_status"]
+          user_id: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          enrolment_id: string
+          id?: string
+          preferred_mac_id?: string | null
+          slot_start: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          user_id: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          enrolment_id?: string
+          id?: string
+          preferred_mac_id?: string | null
+          slot_start?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          user_id?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_enrolment_id_fkey"
+            columns: ["enrolment_id"]
+            isOneToOne: false
+            referencedRelation: "enrolments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_preferred_mac_id_fkey"
+            columns: ["preferred_mac_id"]
+            isOneToOne: false
+            referencedRelation: "macs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohort_secrets: {
         Row: {
           cohort_id: string
@@ -209,6 +274,64 @@ export type Database = {
           },
         ]
       }
+      credit_adjustments: {
+        Row: {
+          amount: number
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          cycle_no: number
+          enrolment_id: string
+          id: string
+          kind: Database["public"]["Enums"]["credit_adjustment_kind"]
+          reason: string
+        }
+        Insert: {
+          amount: number
+          cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          cycle_no: number
+          enrolment_id: string
+          id?: string
+          kind?: Database["public"]["Enums"]["credit_adjustment_kind"]
+          reason: string
+        }
+        Update: {
+          amount?: number
+          cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          cycle_no?: number
+          enrolment_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["credit_adjustment_kind"]
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_adjustments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_adjustments_enrolment_id_fkey"
+            columns: ["enrolment_id"]
+            isOneToOne: false
+            referencedRelation: "enrolments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_outbox: {
         Row: {
           attempts: number
@@ -271,8 +394,10 @@ export type Database = {
           created_at: string
           group_id: string | null
           id: string
+          preferred_mac_id: string | null
           role: Database["public"]["Enums"]["enrolment_role"]
           status: Database["public"]["Enums"]["enrolment_status"]
+          suspension_cleared_cycle: number | null
           updated_at: string
           user_id: string
         }
@@ -281,8 +406,10 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          preferred_mac_id?: string | null
           role: Database["public"]["Enums"]["enrolment_role"]
           status?: Database["public"]["Enums"]["enrolment_status"]
+          suspension_cleared_cycle?: number | null
           updated_at?: string
           user_id: string
         }
@@ -291,8 +418,10 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          preferred_mac_id?: string | null
           role?: Database["public"]["Enums"]["enrolment_role"]
           status?: Database["public"]["Enums"]["enrolment_status"]
+          suspension_cleared_cycle?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -309,6 +438,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolments_preferred_mac_id_fkey"
+            columns: ["preferred_mac_id"]
+            isOneToOne: false
+            referencedRelation: "macs"
             referencedColumns: ["id"]
           },
           {
@@ -352,6 +488,59 @@ export type Database = {
           },
         ]
       }
+      lab_closures: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          kind: Database["public"]["Enums"]["closure_kind"]
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          kind: Database["public"]["Enums"]["closure_kind"]
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["closure_kind"]
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_closures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lab_hours: {
+        Row: {
+          close_time: string
+          open_time: string
+          weekday: number
+        }
+        Insert: {
+          close_time: string
+          open_time: string
+          weekday: number
+        }
+        Update: {
+          close_time?: string
+          open_time?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
       lms_landing_attempts: {
         Row: {
           created_at: string
@@ -370,6 +559,36 @@ export type Database = {
           email?: string
           id?: never
           scope?: string
+        }
+        Relationships: []
+      }
+      macs: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          no: number
+          notes: string | null
+          status: Database["public"]["Enums"]["mac_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          no: number
+          notes?: string | null
+          status?: Database["public"]["Enums"]["mac_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          no?: number
+          notes?: string | null
+          status?: Database["public"]["Enums"]["mac_status"]
+          updated_at?: string
         }
         Relationships: []
       }
@@ -735,8 +954,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_closures: { Args: { p_items: Json }; Returns: Json }
+      admin_adjust_credits: {
+        Args: { p_amount: number; p_enrolment_id: string; p_reason: string }
+        Returns: Json
+      }
       admin_approve_swap: {
         Args: { p_note?: string; p_request_a: string; p_request_b: string }
+        Returns: Json
+      }
+      admin_clear_suspension: {
+        Args: { p_enrolment_id: string }
         Returns: Json
       }
       admin_copy_tutorials: {
@@ -752,8 +980,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_delete_closure: { Args: { p_id: string }; Returns: Json }
       admin_delete_content: { Args: { p_id: string }; Returns: Json }
       admin_get_content: { Args: { p_id: string }; Returns: Json }
+      admin_lab_credits: { Args: { p_cohort_id: string }; Returns: Json[] }
       admin_list_cohorts: { Args: never; Returns: Json[] }
       admin_list_content: {
         Args: {
@@ -761,6 +991,10 @@ export type Database = {
           p_kind: Database["public"]["Enums"]["content_kind"]
         }
         Returns: Json
+      }
+      admin_list_lab_bookings: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json[]
       }
       admin_list_members: {
         Args: {
@@ -791,6 +1025,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_lab_hours: { Args: { p_hours: Json }; Returns: Json[] }
       admin_set_pending_status: {
         Args: {
           p_pending_id: string
@@ -840,6 +1075,16 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_upsert_mac: {
+        Args: {
+          p_id: string
+          p_label: string
+          p_no: number
+          p_notes: string
+          p_status: Database["public"]["Enums"]["mac_status"]
+        }
+        Returns: Json
+      }
       app_error: {
         Args: { p_code: string; p_detail?: string; p_hint?: string }
         Returns: undefined
@@ -866,6 +1111,10 @@ export type Database = {
           p_target: string
         }
         Returns: undefined
+      }
+      book_slots: {
+        Args: { p_cohort_id: string; p_slot_starts: string[] }
+        Returns: Json
       }
       cancel_transfer: { Args: { p_request_id: string }; Returns: Json }
       cohort_json: {
@@ -901,8 +1150,14 @@ export type Database = {
         Returns: Json
       }
       get_content: { Args: { p_id: string }; Returns: Json }
+      get_lab_calendar: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       get_me: { Args: never; Returns: Json }
+      get_my_lab: { Args: { p_cohort_id: string }; Returns: Json }
       get_my_transfers: { Args: { p_cohort_id: string }; Returns: Json }
+      has_active_enrolment: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           p_cohort_id: string
@@ -914,6 +1169,68 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_member: { Args: { p_cohort_id: string }; Returns: boolean }
       iso_colombo: { Args: { p_ts: string }; Returns: string }
+      lab_booked: { Args: { p_slot: string }; Returns: number }
+      lab_booking_json: {
+        Args: { b: Database["public"]["Tables"]["bookings"]["Row"] }
+        Returns: Json
+      }
+      lab_can_edit_closures: { Args: never; Returns: boolean }
+      lab_capacity: { Args: never; Returns: number }
+      lab_cfg: {
+        Args: { p_cohort_id: string }
+        Returns: Database["public"]["CompositeTypes"]["lab_cfg_t"]
+        SetofOptions: {
+          from: "*"
+          to: "lab_cfg_t"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lab_credit_state: {
+        Args: { p_cycle: number; p_enrolment_id: string }
+        Returns: Database["public"]["CompositeTypes"]["lab_credit_t"]
+        SetofOptions: {
+          from: "*"
+          to: "lab_credit_t"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lab_cycle_no: {
+        Args: {
+          c: Database["public"]["CompositeTypes"]["lab_cfg_t"]
+          p_date: string
+        }
+        Returns: number
+      }
+      lab_cycle_start: {
+        Args: {
+          c: Database["public"]["CompositeTypes"]["lab_cfg_t"]
+          p_cycle: number
+        }
+        Returns: string
+      }
+      lab_day_ts: { Args: { p_date: string }; Returns: string }
+      lab_is_suspended: { Args: { p_enrolment_id: string }; Returns: boolean }
+      lab_reason: { Args: { p_enrolment_id: string }; Returns: string }
+      lab_slot_date: { Args: { p_ts: string }; Returns: string }
+      lab_slot_open: { Args: { p_slot: string }; Returns: boolean }
+      lab_suggestions: {
+        Args: { p_enrolment_id: string; p_mac_id: string; p_slot: string }
+        Returns: string[]
+      }
+      lab_today: { Args: never; Returns: string }
+      lab_week_hours: {
+        Args: { p_enrolment_id: string; p_week_start: string }
+        Returns: number
+      }
+      lab_week_start: {
+        Args: {
+          c: Database["public"]["CompositeTypes"]["lab_cfg_t"]
+          p_date: string
+        }
+        Returns: string
+      }
       list_content: {
         Args: { p_kind: Database["public"]["Enums"]["content_kind"] }
         Returns: Json
@@ -928,6 +1245,10 @@ export type Database = {
           p_last: string
           p_username: string
         }
+        Returns: Json
+      }
+      mac_json: {
+        Args: { m: Database["public"]["Tables"]["macs"]["Row"] }
         Returns: Json
       }
       member_json: {
@@ -1031,6 +1352,10 @@ export type Database = {
         Returns: string
       }
       security_summary: { Args: { p_user_id: string }; Returns: Json }
+      set_preferred_mac: {
+        Args: { p_cohort_id: string; p_mac_id: string }
+        Returns: Json
+      }
       submit_survey: {
         Args: { p_cohort_id: string; p_has_mac: boolean }
         Returns: Json
@@ -1073,18 +1398,41 @@ export type Database = {
         Returns: Json
       }
       transfer_row_by_id: { Args: { p_id: string }; Returns: Json }
+      withdraw_booking: { Args: { p_booking_id: string }; Returns: Json }
     }
     Enums: {
+      booking_status:
+        | "booked"
+        | "withdrawn"
+        | "checked_in"
+        | "completed"
+        | "no_show"
+      closure_kind: "holiday" | "closed" | "class_day"
       cohort_status: "active" | "archived"
       content_kind: "resource" | "tutorial"
+      credit_adjustment_kind: "admin"
       enrolment_role: "student" | "instructor"
       enrolment_status: "active" | "removed" | "discarded"
+      mac_status: "in_service" | "out_of_service"
       outbox_status: "queued" | "sent" | "failed" | "skipped"
       pending_status: "pending" | "approved" | "rejected" | "discarded"
       transfer_status: "open" | "approved" | "rejected" | "cancelled"
     }
     CompositeTypes: {
-      [_ in never]: never
+      lab_cfg_t: {
+        credits: number | null
+        cap: number | null
+        cstart: string | null
+        cdays: number | null
+        penalty: number | null
+        suspend: number | null
+        horizon: number | null
+      }
+      lab_credit_t: {
+        allowance: number | null
+        used: number | null
+        no_shows: number | null
+      }
     }
   }
 }
@@ -1212,10 +1560,20 @@ export const Constants = {
   },
   public: {
     Enums: {
+      booking_status: [
+        "booked",
+        "withdrawn",
+        "checked_in",
+        "completed",
+        "no_show",
+      ],
+      closure_kind: ["holiday", "closed", "class_day"],
       cohort_status: ["active", "archived"],
       content_kind: ["resource", "tutorial"],
+      credit_adjustment_kind: ["admin"],
       enrolment_role: ["student", "instructor"],
       enrolment_status: ["active", "removed", "discarded"],
+      mac_status: ["in_service", "out_of_service"],
       outbox_status: ["queued", "sent", "failed", "skipped"],
       pending_status: ["pending", "approved", "rejected", "discarded"],
       transfer_status: ["open", "approved", "rejected", "cancelled"],
