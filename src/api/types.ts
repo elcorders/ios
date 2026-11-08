@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -498,4 +498,161 @@ export interface S9Api {
 /** S10 methods. Admin only; the student keeps their group and answers again. */
 export interface S10Api {
   adminResetSurvey(cohortId: Uuid, enrolmentIds: Uuid[]): Promise<Result<{ reset: number }>>;
+}
+
+// ───────────────────────── S3 — Lab calendar, booking, credits (CONTRACT.md §S3) ─────────────────────────
+
+export type MacStatus = 'in_service' | 'out_of_service';
+export type ClosureKind = 'holiday' | 'closed' | 'class_day';
+export type BookingStatus = 'booked' | 'withdrawn' | 'checked_in' | 'completed' | 'no_show';
+/** `YYYY-MM-DD`, Colombo calendar day. */
+export type IsoDate = string;
+
+export interface Mac {
+  id: Uuid;
+  no: number;
+  label: string | null;
+  status: MacStatus;
+  notes: string | null;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+}
+
+export interface MacInput {
+  id: Uuid | null;
+  no: number;
+  label: string | null;
+  status: MacStatus;
+  notes: string | null;
+}
+
+/** ISO weekday 1 = Mon … 7 = Sun; times "HH:00". A missing weekday = closed. */
+export interface LabHours {
+  weekday: number;
+  open_time: string;
+  close_time: string;
+}
+
+export interface Closure {
+  id: Uuid;
+  date: IsoDate;
+  kind: ClosureKind;
+  reason: string | null;
+  created_by: Uuid | null;
+  created_at: IsoDateTime;
+}
+
+export interface ClosureInput {
+  date: IsoDate;
+  kind: ClosureKind;
+  reason: string | null;
+}
+
+export interface LabSlot {
+  start: IsoDateTime;
+  end: IsoDateTime;
+  booked: number;
+  full: boolean;
+}
+
+export interface LabDay {
+  date: IsoDate;
+  weekday: number;
+  open: boolean;
+  closure: { kind: ClosureKind; reason: string | null } | null;
+  slots: LabSlot[];
+}
+
+export interface LabCalendar {
+  capacity: number;
+  days: LabDay[];
+}
+
+export interface Booking {
+  id: Uuid;
+  slot_start: IsoDateTime;
+  slot_end: IsoDateTime;
+  status: BookingStatus;
+  preferred_mac_no: number | null;
+  created_at: IsoDateTime;
+}
+
+export type LabIneligibleReason = 'has_mac' | 'no_survey' | 'suspended' | 'not_student';
+
+export interface MyLab {
+  eligible: boolean;
+  reason: LabIneligibleReason | null;
+  cycle: { no: number; start: IsoDate; end: IsoDate };
+  credits: { allowance: number; used: number; remaining: number };
+  week: { start: IsoDate; end: IsoDate; hours: number; cap: number };
+  no_shows: number;
+  suspended: boolean;
+  preferred_mac_id: Uuid | null;
+  preferred_mac_no: number | null;
+  needs_preferred_mac: boolean;
+  horizon_end: IsoDate;
+  /** In-service Macs (for the preferred-Mac prompt). */
+  macs: { id: Uuid; no: number; label: string | null }[];
+  bookings: Booking[];
+}
+
+export interface BookWarning {
+  slot_start: IsoDateTime;
+  code: 'preferred_mac_overlap';
+  suggestions: IsoDateTime[];
+}
+
+export interface BookResult {
+  bookings: Booking[];
+  warnings: BookWarning[];
+}
+
+export interface LabBookingRow {
+  id: Uuid;
+  slot_start: IsoDateTime;
+  status: BookingStatus;
+  cohort_code: string;
+  enrolment_id: Uuid;
+  email: string;
+  index_no: string | null;
+  first_name: string;
+  last_name: string;
+  group_no: number | null;
+  preferred_mac_no: number | null;
+}
+
+export interface LabCreditRow {
+  enrolment_id: Uuid;
+  email: string;
+  index_no: string | null;
+  first_name: string;
+  last_name: string;
+  group_no: number | null;
+  eligible: boolean;
+  allowance: number;
+  used: number;
+  remaining: number;
+  no_shows: number;
+  suspended: boolean;
+  upcoming: number;
+}
+
+/** S3 methods (CONTRACT.md §S3 "Frontend Api methods"). */
+export interface S3Api {
+  getLabCalendar(from: IsoDate, to: IsoDate): Promise<Result<LabCalendar>>;
+  getMyLab(cohortId: Uuid): Promise<Result<MyLab>>;
+  bookSlots(cohortId: Uuid, slotStarts: IsoDateTime[]): Promise<Result<BookResult>>;
+  withdrawBooking(bookingId: Uuid): Promise<Result<Booking>>;
+  setPreferredMac(cohortId: Uuid, macId: Uuid | null): Promise<Result<{ preferred_mac_id: Uuid | null; preferred_mac_no: number | null }>>;
+  adminListMacs(): Promise<Result<Mac[]>>;
+  adminUpsertMac(mac: MacInput): Promise<Result<Mac>>;
+  getLabHours(): Promise<Result<LabHours[]>>;
+  adminSetLabHours(hours: LabHours[]): Promise<Result<LabHours[]>>;
+  listClosures(from: IsoDate, to: IsoDate): Promise<Result<Closure[]>>;
+  adminAddClosures(items: ClosureInput[]): Promise<Result<{ added: number; updated: number }>>;
+  adminDeleteClosure(id: Uuid): Promise<Result<{ ok: true }>>;
+  adminListLabBookings(from: IsoDate, to: IsoDate): Promise<Result<LabBookingRow[]>>;
+  adminLabCredits(cohortId: Uuid): Promise<Result<LabCreditRow[]>>;
+  adminAdjustCredits(enrolmentId: Uuid, amount: number, reason: string): Promise<Result<{ allowance: number; used: number; remaining: number }>>;
+  adminClearSuspension(enrolmentId: Uuid): Promise<Result<{ suspended: false }>>;
 }

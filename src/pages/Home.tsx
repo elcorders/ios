@@ -41,6 +41,16 @@ export function Home() {
           <span className="content-card-title">Tutorials</span>
           <span className="muted">Step-by-step tutorials</span>
         </Link>
+        {me.enrolments.some((e) => e.role === 'student') ? (
+          <Link to="/lab" className="card content-card">
+            <span className="content-card-title">Lab booking</span>
+            <span className="muted">Book a lab Mac</span>
+          </Link>
+        ) : null}
+        <Link to="/install" className="card content-card">
+          <span className="content-card-title">Install the app</span>
+          <span className="muted">Add it to your home screen</span>
+        </Link>
       </div>
       <WhatsAppCard enrolments={me.enrolments} />
       <button
