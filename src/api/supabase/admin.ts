@@ -1,11 +1,11 @@
-import type { Me, PendingRegistration, S1Api } from '../types';
+import type { Me, PendingRegistration, S1Api, S7Api } from '../types';
 import { getSupabase } from './client';
 import { callFunction } from './functions';
 import { fail, internalError, mapPostgrestError, ok } from './errors';
 import { callRpc } from './rpc';
 import type { AuthMethods } from './auth';
 
-type DataMethods = Omit<S1Api, keyof AuthMethods>;
+type DataMethods = Omit<S1Api, keyof AuthMethods> & S7Api;
 
 export const dataMethods: DataMethods = {
   lmsLanding: (p) =>
@@ -96,5 +96,6 @@ export const dataMethods: DataMethods = {
 
   approvePending: (pendingId) => callFunction('pending-approve', { pending_id: pendingId }),
   rejectPending: (pendingId) => callRpc('admin_reject_pending', { p_pending_id: pendingId }),
+  adminSetPendingStatus: (pendingId, status) => callRpc('admin_set_pending_status', { p_pending_id: pendingId, p_status: status }),
   adminResetSecurity: (userId, what) => callFunction('admin-reset-security', { user_id: userId, what }),
 };

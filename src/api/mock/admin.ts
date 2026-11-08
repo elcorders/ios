@@ -3,6 +3,7 @@ import type {
   RosterRowErrorCode,
 } from '../types';
 import { getMockCurrentEmail } from './auth';
+import { surveyInfoFor } from './survey';
 import { resetMockCohortState, setMockCohortWhatsApp } from './cohortState';
 import {
   MOCK_ARCHIVED_COHORT, MOCK_ARCHIVED_COURSE_KEY, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS,
@@ -77,6 +78,7 @@ function toMember(e: MockEnrolment): Member {
     phone: p.phone,
     security: { ...sec },
     last_sign_in_at: e.status === 'active' && sec.passkeys + (sec.totp ? 1 : 0) > 0 ? '2026-03-02T08:15:00+00:00' : null,
+    group_no: surveyInfoFor(e.id, e.role).group_no,
   };
 }
 
@@ -101,7 +103,7 @@ type AdminMethods = Pick<
   Api,
   | 'adminListCohorts' | 'adminUpsertCohort' | 'adminUpdateCohortSettings' | 'listMembers'
   | 'adminUpdateProfile' | 'adminSetEnrolmentStatus' | 'adminListPending' | 'approvePending'
-  | 'rejectPending' | 'adminResetSecurity' | 'rosterImport'
+  | 'rejectPending' | 'adminResetSecurity' | 'rosterImport' | 'adminSetPendingStatus'
 >;
 
 export const mockAdmin: Partial<Api> & AdminMethods = {
@@ -216,6 +218,20 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
     if (row.status !== 'pending') return fail('conflict');
     row.status = 'rejected';
     row.decided_at = '2026-06-01T09:00:00+05:30';
+    return ok({ ...row });
+  }),
+
+  adminSetPendingStatus: guard((pendingId, status) => {
+    const row = state.pending.find((p) => p.id === pendingId);
+    if (!row) return fail('not_found');
+    if (cohortOf(row.cohort_id)?.status === 'archived') return fail('cohort_archived');
+    if (status === 'discarded') {
+      if (row.status !== 'pending' && row.status !== 'rejected') return fail('conflict');
+    } else if (status === 'pending') {
+      if (row.status !== 'discarded') return fail('conflict');
+    } else return fail('invalid_input');
+    row.status = status;
+    row.decided_at = status === 'pending' ? null : '2026-06-01T09:00:00+05:30';
     return ok({ ...row });
   }),
 

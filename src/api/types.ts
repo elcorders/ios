@@ -21,15 +21,16 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
 export type Uuid = string;
 export type CohortStatus = 'active' | 'archived';
 export type EnrolmentRole = 'student' | 'instructor';
-export type EnrolmentStatus = 'active' | 'removed';
-export type PendingStatus = 'pending' | 'approved' | 'rejected';
+/** S7: `discarded` = hidden junk/test row, kept and restorable (PLAN D45). */
+export type EnrolmentStatus = 'active' | 'removed' | 'discarded';
+export type PendingStatus = 'pending' | 'approved' | 'rejected' | 'discarded';
 
 export interface CohortSettings {
   whatsapp_link: string | null;
@@ -123,6 +124,8 @@ export interface Member {
   phone: string | null;
   security: { passkeys: number; totp: boolean };
   last_sign_in_at: IsoDateTime | null;
+  /** S7: student's group number (null for instructors / not grouped yet). */
+  group_no: number | null;
 }
 
 export interface UpsertCohortInput {
@@ -350,4 +353,12 @@ export interface S6Api {
   adminSetContentPublish(id: Uuid, publishedAt: IsoDateTime | null): Promise<Result<AdminContentRow>>;
   adminDeleteContent(id: Uuid): Promise<Result<{ ok: true }>>;
   adminCopyTutorials(fromCohortId: Uuid, toCohortId: Uuid): Promise<Result<{ copied: number }>>;
+}
+
+// ───────────────────────── S7 — Admin: discard, tables, groups view (CONTRACT.md §S7) ─────────────────────────
+
+/** S7 methods. Groups view reuses adminListSurvey (S2). */
+export interface S7Api {
+  /** 'discarded' from pending/rejected; 'pending' restores a discarded row. */
+  adminSetPendingStatus(pendingId: Uuid, status: 'discarded' | 'pending'): Promise<Result<PendingRegistration>>;
 }

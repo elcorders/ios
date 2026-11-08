@@ -1,6 +1,6 @@
-import type { S1Api, S2Api, S6Api } from './types';
+import type { S1Api, S2Api, S6Api, S7Api } from './types';
 
-type SliceApi = S1Api & S2Api & S6Api;
+type SliceApi = S1Api & S2Api & S6Api & S7Api;
 
 /** Placeholder for methods a slice's F (mock) or I (supabase) task has not implemented yet. */
 const S1_METHODS = [
@@ -14,6 +14,8 @@ const S1_METHODS = [
   // S6
   'listContent', 'getContent', 'adminListContent', 'adminGetContent', 'adminUpsertContent',
   'adminSetContentPublish', 'adminDeleteContent', 'adminCopyTutorials',
+  // S7
+  'adminSetPendingStatus',
 ] as const satisfies readonly (keyof SliceApi)[];
 
 // Compile-time check that S1_METHODS lists every slice method.
