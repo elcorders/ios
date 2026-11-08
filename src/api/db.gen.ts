@@ -563,6 +563,13 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_pending_status: {
+        Args: {
+          p_pending_id: string
+          p_status: Database["public"]["Enums"]["pending_status"]
+        }
+        Returns: Json
+      }
       admin_update_cohort_settings: {
         Args: { p_cohort_id: string; p_patch: Json }
         Returns: Json
@@ -755,8 +762,8 @@ export type Database = {
       cohort_status: "active" | "archived"
       content_kind: "resource" | "tutorial"
       enrolment_role: "student" | "instructor"
-      enrolment_status: "active" | "removed"
-      pending_status: "pending" | "approved" | "rejected"
+      enrolment_status: "active" | "removed" | "discarded"
+      pending_status: "pending" | "approved" | "rejected" | "discarded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -890,8 +897,8 @@ export const Constants = {
       cohort_status: ["active", "archived"],
       content_kind: ["resource", "tutorial"],
       enrolment_role: ["student", "instructor"],
-      enrolment_status: ["active", "removed"],
-      pending_status: ["pending", "approved", "rejected"],
+      enrolment_status: ["active", "removed", "discarded"],
+      pending_status: ["pending", "approved", "rejected", "discarded"],
     },
   },
 } as const
