@@ -1,9 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0d12" />
     <title>NIBM iOS</title>
+    <script>
+      // Apply the saved theme before first paint (dark is the default). Mirrors src/lib/theme.ts.
+      try {
+        if (localStorage.getItem('ios.theme') === 'light') {
+          document.documentElement.dataset.theme = 'light';
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f6fa');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

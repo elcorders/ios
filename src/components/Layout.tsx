@@ -1,15 +1,27 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Layout() {
+  const { me } = useAuth();
+  const { pathname } = useLocation();
+  const wide = pathname.startsWith('/admin');
   return (
     <div className="app">
       <header className="app-header">
-        <Link to="/" className="app-name">NIBM iOS</Link>
-        <nav aria-label="Main">
-          <Link to="/lms">LMS</Link>
-        </nav>
+        <div className="app-header-inner">
+          <Link to="/" className="app-name">
+            <span className="logo" aria-hidden="true"></span>
+            NIBM iOS
+          </Link>
+          <nav aria-label="Main" className="main-nav">
+            {me ? <NavLink to="/" end>Home</NavLink> : null}
+            {me?.is_admin ? <NavLink to="/admin">Admin</NavLink> : null}
+            <ThemeToggle />
+          </nav>
+        </div>
       </header>
-      <main className="app-main">
+      <main className={wide ? 'app-main wide' : 'app-main'}>
         <Outlet />
       </main>
     </div>

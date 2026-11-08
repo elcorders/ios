@@ -26,7 +26,7 @@ export function Health() {
   const built = formatColombo(__BUILD_TIME__, { dateStyle: 'medium', timeStyle: 'medium' });
 
   return (
-    <section>
+    <section className="card">
       <h1>Health</h1>
       <dl>
         <dt>App</dt>

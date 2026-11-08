@@ -61,8 +61,10 @@ export function Survey() {
       {choice === null ? (
         <>
           <p>Do you have access to a Mac now?</p>
-          <button type="button" className="primary" onClick={() => setChoice(true)}>Yes</button>
-          <button type="button" className="primary" onClick={() => setChoice(false)}>No</button>
+          <div className="choices">
+            <button type="button" className="primary" onClick={() => setChoice(true)}>Yes</button>
+            <button type="button" onClick={() => setChoice(false)}>No</button>
+          </div>
         </>
       ) : (
         <>

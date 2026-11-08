@@ -7,7 +7,7 @@ export function WhatsAppCard({ enrolments }: { enrolments: MyEnrolment[] }) {
   return (
     <>
       {items.map((e) => (
-        <div key={e.enrolment_id} className="card" aria-label={`WhatsApp group ${e.cohort_code}`}>
+        <div key={e.enrolment_id} className="card whatsapp-card" aria-label={`WhatsApp group ${e.cohort_code}`}>
           <h2>Join the class WhatsApp group</h2>
           <p>Class {e.cohort_code}</p>
           <p>

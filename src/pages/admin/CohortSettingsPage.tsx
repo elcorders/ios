@@ -47,7 +47,7 @@ function CohortSettingsForm() {
   }
 
   return (
-    <section>
+    <section className="card">
       <h2>Cohort settings</h2>
       <dl>
         <dt>Code</dt><dd>{cohort.code}</dd>

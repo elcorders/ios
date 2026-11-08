@@ -34,7 +34,7 @@ export function AdminLayout() {
   const { me } = useAuth();
   if (!me?.is_admin) {
     return (
-      <section>
+      <section className="card">
         <h1>Not allowed</h1>
         <p>This area is for admins only.</p>
       </section>
@@ -81,16 +81,18 @@ function AdminArea() {
   return (
     <AdminContext.Provider value={{ cohort, cohorts, readOnly, reloadCohorts }}>
       <section className="stack">
-        <h1>Admin</h1>
-        <div className="field">
-          <label htmlFor="cohort-switcher">Cohort</label>
-          <select id="cohort-switcher" value={cohort.id} onChange={(e) => choose(e.target.value)}>
-            {cohorts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} ({c.batch}){c.status === 'archived' ? ' - archived' : ''}
-              </option>
-            ))}
-          </select>
+        <div className="admin-head">
+          <h1>Admin</h1>
+          <div className="field">
+            <label htmlFor="cohort-switcher">Cohort</label>
+            <select id="cohort-switcher" value={cohort.id} onChange={(e) => choose(e.target.value)}>
+              {cohorts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.code} ({c.batch}){c.status === 'archived' ? ' - archived' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         {readOnly ? (
           <p role="status" className="banner">This cohort is archived and read-only.</p>
