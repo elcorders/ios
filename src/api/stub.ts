@@ -1,4 +1,6 @@
-import type { S1Api, S2Api } from './types';
+import type { S1Api, S2Api, S6Api } from './types';
+
+type SliceApi = S1Api & S2Api & S6Api;
 
 /** Placeholder for methods a slice's F (mock) or I (supabase) task has not implemented yet. */
 const S1_METHODS = [
@@ -9,18 +11,21 @@ const S1_METHODS = [
   'rosterImport', 'adminListPending', 'approvePending', 'rejectPending', 'adminResetSecurity',
   // S2
   'submitSurvey', 'adminListSurvey',
-] as const satisfies readonly (keyof (S1Api & S2Api))[];
+  // S6
+  'listContent', 'getContent', 'adminListContent', 'adminGetContent', 'adminUpsertContent',
+  'adminSetContentPublish', 'adminDeleteContent', 'adminCopyTutorials',
+] as const satisfies readonly (keyof SliceApi)[];
 
-// Compile-time check that S1_METHODS lists every S1Api + S2Api method.
-type Missing = Exclude<keyof (S1Api & S2Api), (typeof S1_METHODS)[number]>;
+// Compile-time check that S1_METHODS lists every slice method.
+type Missing = Exclude<keyof SliceApi, (typeof S1_METHODS)[number]>;
 const allListed: Missing extends never ? true : Missing = true;
 void allListed;
 
-export function notImplemented(adapter: string): S1Api & S2Api {
+export function notImplemented(adapter: string): SliceApi {
   return Object.fromEntries(
     S1_METHODS.map((m) => [
       m,
       () => Promise.resolve({ ok: false, error: { code: 'not_implemented', message: `${adapter}.${m} is not implemented yet` } }),
     ]),
-  ) as unknown as S1Api & S2Api;
+  ) as unknown as SliceApi;
 }

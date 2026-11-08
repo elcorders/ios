@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -276,4 +276,78 @@ export interface SurveyOverview {
 export interface S2Api {
   submitSurvey(cohortId: Uuid, hasMac: boolean): Promise<Result<SurveySubmitResult>>;
   adminListSurvey(cohortId: Uuid): Promise<Result<SurveyOverview>>;
+}
+
+// ───────────────────────── S6 — Content: resources + tutorials (CONTRACT.md §S6) ─────────────────────────
+
+export type ContentKind = 'resource' | 'tutorial';
+export type ContentStatus = 'draft' | 'scheduled' | 'published';
+
+/** list_content row (visible items only, no body). */
+export interface ContentSummary {
+  id: Uuid;
+  kind: ContentKind;
+  cohort_id: Uuid | null;
+  cohort_code: string | null;
+  title: string;
+  summary: string | null;
+  position: number;
+  published_at: IsoDateTime;
+}
+
+/** get_content result. Render body_html only in the sandboxed viewer (CONTRACT §S6 Viewer). */
+export interface ContentItem {
+  id: Uuid;
+  kind: ContentKind;
+  cohort_code: string | null;
+  title: string;
+  summary: string | null;
+  published_at: IsoDateTime;
+  body_html: string;
+}
+
+export interface AdminContentRow {
+  id: Uuid;
+  kind: ContentKind;
+  cohort_id: Uuid | null;
+  title: string;
+  summary: string | null;
+  position: number;
+  published_at: IsoDateTime | null;
+  status: ContentStatus;
+  size_bytes: number;
+  updated_at: IsoDateTime;
+}
+
+export interface AdminContentItem extends Omit<ContentItem, 'published_at'> {
+  cohort_id: Uuid | null;
+  position: number;
+  published_at: IsoDateTime | null;
+  status: ContentStatus;
+}
+
+export interface UpsertContentInput {
+  /** null = create. */
+  id: Uuid | null;
+  kind: ContentKind;
+  /** Required for tutorials, null for resources. */
+  cohort_id: Uuid | null;
+  title: string;
+  summary: string | null;
+  position: number;
+  /** null on update = keep the stored body. Required on create. */
+  body_html: string | null;
+}
+
+/** S6 methods (CONTRACT.md §S6 "Frontend Api methods"). */
+export interface S6Api {
+  listContent(kind: ContentKind): Promise<Result<ContentSummary[]>>;
+  getContent(id: Uuid): Promise<Result<ContentItem>>;
+  adminListContent(kind: ContentKind, cohortId: Uuid | null): Promise<Result<AdminContentRow[]>>;
+  adminGetContent(id: Uuid): Promise<Result<AdminContentItem>>;
+  adminUpsertContent(input: UpsertContentInput): Promise<Result<AdminContentRow>>;
+  /** null = unpublish; <= now = publish now; future = schedule. */
+  adminSetContentPublish(id: Uuid, publishedAt: IsoDateTime | null): Promise<Result<AdminContentRow>>;
+  adminDeleteContent(id: Uuid): Promise<Result<{ ok: true }>>;
+  adminCopyTutorials(fromCohortId: Uuid, toCohortId: Uuid): Promise<Result<{ copied: number }>>;
 }
