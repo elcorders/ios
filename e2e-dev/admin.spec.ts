@@ -55,14 +55,15 @@ test('admin imports a roster, approves a pending registration and resets securit
   await page.getByRole('link', { name: /^Pending/ }).click();
   await page.getByRole('button', { name: `Approve ${pendingEmail}` }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('Decided (1)')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Decided 1' })).toBeVisible();
   await page.getByRole('link', { name: 'Members' }).click();
   await expect(page.getByRole('cell', { name: pendingEmail })).toBeVisible();
 
   // Reset security for the target student: TOTP badge goes from yes to no.
   const row = page.getByRole('row').filter({ hasText: target.email });
   await expect(row.getByText('TOTP yes')).toBeVisible();
-  await row.getByRole('button', { name: /^Reset security/ }).click();
+  await row.getByRole('button', { name: /^Actions for / }).click();
+  await page.getByRole('menuitem', { name: /^Reset security/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Reset' }).click();
   await expect(page.getByRole('row').filter({ hasText: target.email }).getByText('TOTP no')).toBeVisible();
 

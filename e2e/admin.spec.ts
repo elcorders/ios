@@ -15,5 +15,5 @@ test('admin sees members and approves a pending registration', async ({ page }) 
   await page.getByRole('link', { name: /^Pending/ }).click();
   await page.getByRole('button', { name: 'Approve student061@example.edu' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('Decided (2)')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Decided 2' })).toBeVisible();
 });

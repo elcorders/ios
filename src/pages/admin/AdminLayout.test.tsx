@@ -10,6 +10,11 @@ function open(path: string) {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
+async function openMenu(person: string, item: string) {
+  fireEvent.click(await screen.findByRole('button', { name: `Actions for ${person}` }));
+  fireEvent.click(screen.getByRole('menuitem', { name: `${item} ${person}` }));
+}
+
 const signIn = (email: string) => api.verifyEmailCode(email, '123456');
 
 beforeEach(() => {
@@ -47,34 +52,35 @@ describe('admin area', () => {
     expect(localStorage.getItem('ios.admin.cohort')).toBe('00000000-0000-4000-8000-000000000251');
     fireEvent.change(screen.getByLabelText('Search'), { target: { value: '' } });
     await screen.findByText('student002@example.edu');
-    for (const b of screen.getAllByRole('button', { name: /^Edit / })) expect(b).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^Actions for / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
-  it('hides removed members until toggled', async () => {
+  it('hides removed members until the Removed chip is chosen', async () => {
     await signIn('admin@example.edu');
     open('/admin/members');
     await screen.findByText('student001@example.edu');
     expect(screen.queryByText('student009@example.edu')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Show removed'));
+    fireEvent.click(screen.getByRole('button', { name: /^Removed/ }));
     expect(screen.getByText('student009@example.edu')).toBeInTheDocument();
   });
 
   it('edit dialog submits the profile change', async () => {
     await signIn('admin@example.edu');
     open('/admin/members');
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit Test001 Student' }));
+    await openMenu('Test001 Student', 'Edit');
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByLabelText('Email')).toHaveAttribute('readonly');
     expect(within(dialog).getByText('Change via import.')).toBeInTheDocument();
     fireEvent.change(within(dialog).getByLabelText('First name'), { target: { value: 'Renamed' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('button', { name: 'Edit Renamed Student' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Actions for Renamed Student' })).toBeInTheDocument();
   });
 
   it('shows a friendly error when the edit is rejected', async () => {
     await signIn('admin@example.edu');
     open('/admin/members');
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit Test001 Student' }));
+    await openMenu('Test001 Student', 'Edit');
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Index number'), { target: { value: 'COBSCCOMP251P-002' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
@@ -84,7 +90,7 @@ describe('admin area', () => {
   it('removes a member after confirming', async () => {
     await signIn('admin@example.edu');
     open('/admin/members');
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove Test002 Student' }));
+    await openMenu('Test002 Student', 'Remove');
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove' }));
     await waitFor(() => expect(screen.queryByText('student002@example.edu')).not.toBeInTheDocument());
   });
@@ -95,7 +101,7 @@ describe('admin area', () => {
     expect(await screen.findByText('student061@example.edu')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Approve student061@example.edu' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Approve' }));
-    await screen.findByText('Decided (2)');
+    await screen.findByRole('button', { name: 'Decided 2' });
     expect(screen.queryByRole('button', { name: 'Approve student061@example.edu' })).not.toBeInTheDocument();
   });
 });

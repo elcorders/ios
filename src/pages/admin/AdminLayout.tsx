@@ -9,6 +9,7 @@ import { messageFor } from '../../lib/errors';
 import { AdminContext } from './AdminContext';
 import { MembersPage } from './MembersPage';
 import { SurveyPage } from './SurveyPage';
+import { GroupsPage } from './GroupsPage';
 import { PendingPage } from './PendingPage';
 import { ContentPage } from './ContentPage';
 
@@ -104,6 +105,7 @@ function AdminArea() {
           <NavLink to="/admin/pending">Pending ({cohort.counts.pending})</NavLink>
           <NavLink to="/admin/cohort">Cohort</NavLink>
           <NavLink to="/admin/survey">Survey</NavLink>
+          <NavLink to="/admin/groups">Groups</NavLink>
           <NavLink to="/admin/content">Content</NavLink>
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
@@ -114,6 +116,7 @@ function AdminArea() {
           <Route path="pending" element={<PendingPage />} />
           <Route path="cohort" element={<CohortSettingsPage />} />
           <Route path="survey" element={<SurveyPage />} />
+          <Route path="groups" element={<GroupsPage />} />
           <Route path="content" element={<ContentPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
