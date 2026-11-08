@@ -1,0 +1,16 @@
+.install-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; counter-reset: step; }
+.install-steps li {
+  counter-increment: step;
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+}
+.install-steps li::before {
+  content: counter(step);
+  flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 600;
+  background: var(--accent-soft); color: var(--accent);
+}
+.install-steps .picto { flex: none; width: 1.75rem; height: 1.75rem; color: var(--accent); margin-left: auto; }
+.install-note { background: var(--warn-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; }
+.install-done { background: var(--accent-soft); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; font-weight: 600; }
