@@ -10,6 +10,7 @@ import { AdminContext } from './AdminContext';
 import { MembersPage } from './MembersPage';
 import { SurveyPage } from './SurveyPage';
 import { PendingPage } from './PendingPage';
+import { ContentPage } from './ContentPage';
 
 const STORAGE_KEY = 'ios.admin.cohort';
 
@@ -103,6 +104,7 @@ function AdminArea() {
           <NavLink to="/admin/pending">Pending ({cohort.counts.pending})</NavLink>
           <NavLink to="/admin/cohort">Cohort</NavLink>
           <NavLink to="/admin/survey">Survey</NavLink>
+          <NavLink to="/admin/content">Content</NavLink>
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
         <Routes>
@@ -112,6 +114,7 @@ function AdminArea() {
           <Route path="pending" element={<PendingPage />} />
           <Route path="cohort" element={<CohortSettingsPage />} />
           <Route path="survey" element={<SurveyPage />} />
+          <Route path="content" element={<ContentPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>
