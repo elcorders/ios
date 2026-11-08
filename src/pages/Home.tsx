@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { WhatsAppCard } from '../components/WhatsAppCard';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -31,6 +31,16 @@ export function Home() {
             </p>
           </div>
         ))}
+      <div className="quick-links">
+        <Link to="/resources" className="card content-card">
+          <span className="content-card-title">Resources</span>
+          <span className="muted">Guides and references</span>
+        </Link>
+        <Link to="/tutorials" className="card content-card">
+          <span className="content-card-title">Tutorials</span>
+          <span className="muted">Step-by-step tutorials</span>
+        </Link>
+      </div>
       <WhatsAppCard enrolments={me.enrolments} />
       <button
         type="button"

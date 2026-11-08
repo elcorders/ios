@@ -12,10 +12,12 @@ export function Layout() {
         <div className="app-header-inner">
           <Link to="/" className="app-name">
             <span className="logo" aria-hidden="true"></span>
-            NIBM iOS
+            <span className="app-name-text">NIBM iOS</span>
           </Link>
           <nav aria-label="Main" className="main-nav">
             {me ? <NavLink to="/" end>Home</NavLink> : null}
+            {me ? <NavLink to="/resources">Resources</NavLink> : null}
+            {me ? <NavLink to="/tutorials">Tutorials</NavLink> : null}
             {me?.is_admin ? <NavLink to="/admin">Admin</NavLink> : null}
             <ThemeToggle />
           </nav>

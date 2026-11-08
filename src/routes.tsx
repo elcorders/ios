@@ -9,6 +9,9 @@ import { Survey } from './pages/Survey';
 import { SecuritySetup } from './pages/SecuritySetup';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { LmsLanding } from './pages/LmsLanding';
+import { Resources } from './pages/Resources';
+import { Tutorials } from './pages/Tutorials';
+import { ContentView } from './pages/ContentView';
 import { NotFound } from './pages/NotFound';
 
 export const routes: RouteObject[] = [
@@ -23,6 +26,9 @@ export const routes: RouteObject[] = [
       { index: true, element: <RequireAuth><Home /></RequireAuth> },
       { path: 'setup', element: <RequireAuth><SecuritySetup /></RequireAuth> },
       { path: 'survey', element: <RequireAuth><Survey /></RequireAuth> },
+      { path: 'resources', element: <RequireAuth><Resources /></RequireAuth> },
+      { path: 'tutorials', element: <RequireAuth><Tutorials /></RequireAuth> },
+      { path: 'c/:id', element: <RequireAuth><ContentView /></RequireAuth> },
       { path: 'admin/*', element: <RequireAuth><AdminLayout /></RequireAuth> },
       { path: 'login', element: <Login /> },
       { path: 'lms', element: <LmsLanding /> },
