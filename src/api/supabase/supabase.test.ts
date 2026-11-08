@@ -71,6 +71,22 @@ describe('rpc methods', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('admin_list_survey', { p_cohort_id: 'c1' });
     expect(!e.ok && e.error.code).toBe('cohort_archived');
   });
+
+  it('S6 content methods call the contract RPCs with p_ args', async () => {
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
+    await supabaseApi.listContent('tutorial');
+    expect(mocks.rpc).toHaveBeenCalledWith('list_content', { p_kind: 'tutorial' });
+    await supabaseApi.getContent('x1');
+    expect(mocks.rpc).toHaveBeenCalledWith('get_content', { p_id: 'x1' });
+    await supabaseApi.adminUpsertContent({ id: null, kind: 'resource', cohort_id: null, title: 'T', summary: null, position: 1, body_html: '<p>x</p>' });
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_upsert_content', {
+      p_id: null, p_kind: 'resource', p_cohort_id: null, p_title: 'T', p_summary: null, p_position: 1, p_body_html: '<p>x</p>',
+    });
+    await supabaseApi.adminSetContentPublish('x1', null);
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_set_content_publish', { p_id: 'x1', p_published_at: null });
+    await supabaseApi.adminCopyTutorials('a', 'b');
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_copy_tutorials', { p_from_cohort_id: 'a', p_to_cohort_id: 'b' });
+  });
   it('lmsLanding maps params to p_ args', async () => {
     mocks.rpc.mockResolvedValue({ data: { status: 'pending', cohort_code: '25.2', email: 'a@example.edu' }, error: null });
     const r = await supabaseApi.lmsLanding({ key: 'k', course_id: '1', email: 'a@example.edu', first: 'A' });

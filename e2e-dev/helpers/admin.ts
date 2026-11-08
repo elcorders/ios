@@ -74,6 +74,9 @@ export async function emailCode(email: string): Promise<string> {
 /** Remove every e2e user (cascades to profiles/enrolments/credentials) and test pending rows. Idempotent. */
 export async function cleanup(): Promise<void> {
   const sb = serviceClient();
+  // S6: content created by e2e specs is titled "E2E …".
+  const c = await sb.from('content_items').delete().like('title', 'E2E %');
+  if (c.error) throw new Error(`content cleanup: ${c.error.message}`);
   for (let page = 1; page < 50; page++) {
     const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw new Error(`listUsers: ${error.message}`);

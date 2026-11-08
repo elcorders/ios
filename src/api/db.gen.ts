@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       audit_log: {
@@ -126,6 +151,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      content_items: {
+        Row: {
+          body_html: string
+          cohort_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["content_kind"]
+          position: number
+          published_at: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          cohort_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["content_kind"]
+          position?: number
+          published_at?: string | null
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          cohort_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["content_kind"]
+          position?: number
+          published_at?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       enrolments: {
         Row: {
@@ -447,7 +529,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_copy_tutorials: {
+        Args: { p_from_cohort_id: string; p_to_cohort_id: string }
+        Returns: Json
+      }
+      admin_delete_content: { Args: { p_id: string }; Returns: Json }
+      admin_get_content: { Args: { p_id: string }; Returns: Json }
       admin_list_cohorts: { Args: never; Returns: Json[] }
+      admin_list_content: {
+        Args: {
+          p_cohort_id?: string
+          p_kind: Database["public"]["Enums"]["content_kind"]
+        }
+        Returns: Json
+      }
       admin_list_members: {
         Args: {
           p_cohort_id: string
@@ -457,6 +552,10 @@ export type Database = {
       }
       admin_list_survey: { Args: { p_cohort_id: string }; Returns: Json }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }
+      admin_set_content_publish: {
+        Args: { p_id: string; p_published_at?: string }
+        Returns: Json
+      }
       admin_set_enrolment_status: {
         Args: {
           p_enrolment_id: string
@@ -487,6 +586,18 @@ export type Database = {
           p_id: string
           p_lms_course_id: string
           p_status: Database["public"]["Enums"]["cohort_status"]
+        }
+        Returns: Json
+      }
+      admin_upsert_content: {
+        Args: {
+          p_body_html: string
+          p_cohort_id: string
+          p_id: string
+          p_kind: Database["public"]["Enums"]["content_kind"]
+          p_position: number
+          p_summary: string
+          p_title: string
         }
         Returns: Json
       }
@@ -521,10 +632,27 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["cohorts"]["Row"] }
         Returns: Json
       }
+      content_admin_json: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: Json
+      }
+      content_audit_json: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: Json
+      }
+      content_status: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: string
+      }
+      content_visible: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: boolean
+      }
       enrolment_json: {
         Args: { e: Database["public"]["Tables"]["enrolments"]["Row"] }
         Returns: Json
       }
+      get_content: { Args: { p_id: string }; Returns: Json }
       get_me: { Args: never; Returns: Json }
       has_role: {
         Args: {
@@ -537,6 +665,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_member: { Args: { p_cohort_id: string }; Returns: boolean }
       iso_colombo: { Args: { p_ts: string }; Returns: string }
+      list_content: {
+        Args: { p_kind: Database["public"]["Enums"]["content_kind"] }
+        Returns: Json
+      }
       lms_landing: {
         Args: {
           p_course_id: string
@@ -621,6 +753,7 @@ export type Database = {
     }
     Enums: {
       cohort_status: "active" | "archived"
+      content_kind: "resource" | "tutorial"
       enrolment_role: "student" | "instructor"
       enrolment_status: "active" | "removed"
       pending_status: "pending" | "approved" | "rejected"
@@ -749,9 +882,13 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       cohort_status: ["active", "archived"],
+      content_kind: ["resource", "tutorial"],
       enrolment_role: ["student", "instructor"],
       enrolment_status: ["active", "removed"],
       pending_status: ["pending", "approved", "rejected"],

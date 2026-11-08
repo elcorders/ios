@@ -17,6 +17,12 @@ type Dlg =
   | { type: 'preview'; row: AdminContentRow }
   | { type: 'copy' };
 
+/**
+ * "Publish now": a minute in the past, so a browser clock slightly ahead of the server
+ * can't turn it into a schedule. The server stores its own now() for past values (CONTRACT §S6).
+ */
+export const publishNowIso = (): string => new Date(Date.now() - 60_000).toISOString();
+
 export function ContentPage() {
   const { cohort, cohorts, readOnly, reloadCohorts } = useAdmin();
   return (
@@ -130,7 +136,7 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                             <button
                               type="button"
                               aria-label={`Publish now ${r.title}`}
-                              onClick={() => void act(() => api.adminSetContentPublish(r.id, new Date().toISOString()), `Published “${r.title}”.`)}
+                              onClick={() => void act(() => api.adminSetContentPublish(r.id, publishNowIso()), `Published “${r.title}”.`)}
                             >Publish now</button>
                           ) : null}
                           <button type="button" aria-label={`Schedule ${r.title}`} onClick={() => setDlg({ type: 'schedule', row: r })}>Schedule…</button>
