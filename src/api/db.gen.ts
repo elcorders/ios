@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       audit_log: {
@@ -399,6 +424,45 @@ export type Database = {
           {
             foreignKeyName: "pending_registrations_decided_by_fkey"
             columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_previous_emails: {
+        Row: {
+          email: string
+          id: string
+          replaced_at: string
+          replaced_by: string | null
+          user_id: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          replaced_at?: string
+          replaced_by?: string | null
+          user_id: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          replaced_at?: string
+          replaced_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_previous_emails_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_previous_emails_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -820,6 +884,14 @@ export type Database = {
         Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
         Returns: boolean
       }
+      email_change_check: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: Json
+      }
+      email_change_finish: {
+        Args: { p_actor: string; p_email: string; p_user_id: string }
+        Returns: Json
+      }
       enrolment_json: {
         Args: { e: Database["public"]["Tables"]["enrolments"]["Row"] }
         Returns: Json
@@ -950,6 +1022,10 @@ export type Database = {
         Returns: Json
       }
       roster_lookup_user: { Args: { p_email: string }; Returns: string }
+      roster_match_user: {
+        Args: { p_email: string; p_index_no: string }
+        Returns: string
+      }
       security_summary: { Args: { p_user_id: string }; Returns: Json }
       submit_survey: {
         Args: { p_cohort_id: string; p_has_mac: boolean }
@@ -1127,6 +1203,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       cohort_status: ["active", "archived"],
