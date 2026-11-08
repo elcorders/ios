@@ -3,8 +3,9 @@ import { Navigate, useLocation } from 'react-router-dom';
 import type { Me, MyEnrolment } from '../api/types';
 import { useAuth } from './AuthProvider';
 
-/** First active student enrolment in an active cohort that still owes the survey (S2). */
+/** First active student enrolment in an active cohort that still owes the survey (S2). Admins are never gated. */
 export function surveyCohort(me: Me): MyEnrolment | undefined {
+  if (me.is_admin) return undefined;
   return me.enrolments.find(
     (e) => e.role === 'student' && e.status === 'active' && e.cohort_status === 'active' && !e.survey_done,
   );

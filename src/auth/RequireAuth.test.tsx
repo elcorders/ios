@@ -7,9 +7,9 @@ import { RequireAuth } from './RequireAuth';
 let me: Me;
 vi.mock('./AuthProvider', () => ({ useAuth: () => ({ me, loading: false }) }));
 
-function meWith(setup: boolean, surveyDone: boolean): Me {
+function meWith(setup: boolean, surveyDone: boolean, isAdmin = false): Me {
   return {
-    profile: {} as Me['profile'], is_admin: false,
+    profile: {} as Me['profile'], is_admin: isAdmin,
     enrolments: [{
       enrolment_id: 'e1', cohort_id: 'c1', cohort_code: '25.2', cohort_status: 'active', role: 'student',
       status: 'active', whatsapp_link: null, survey_done: surveyDone, group_no: null, group_name: null,
@@ -45,5 +45,10 @@ describe('RequireAuth gate order', () => {
     me = meWith(true, false);
     at('/');
     expect(screen.getByText('page /survey')).toBeInTheDocument();
+  });
+  it('an admin with an unanswered student enrolment is not gated', () => {
+    me = meWith(true, false, true);
+    at('/');
+    expect(screen.getByText('page /')).toBeInTheDocument();
   });
 });
