@@ -12,6 +12,8 @@ import { SurveyPage } from './SurveyPage';
 import { GroupsPage } from './GroupsPage';
 import { PendingPage } from './PendingPage';
 import { ContentPage } from './ContentPage';
+import { TransfersPage } from './TransfersPage';
+import { onOpenCount } from './transfers/openCount';
 
 const STORAGE_KEY = 'ios.admin.cohort';
 
@@ -49,6 +51,20 @@ function AdminArea() {
   const [cohorts, setCohorts] = useState<AdminCohort[] | null>(null);
   const [selected, setSelected] = useState<string | null>(readStored);
   const [error, setError] = useState<string | null>(null);
+  const [openTransfers, setOpenTransfers] = useState<{ cohortId: string; count: number } | null>(null);
+  const cohortId = cohorts?.length ? (cohorts.find((c) => c.id === selected) ?? cohorts.find((c) => c.status === 'active') ?? cohorts[0]!).id : null;
+
+  useEffect(() => onOpenCount((id, count) => setOpenTransfers({ cohortId: id, count })), []);
+  useEffect(() => {
+    if (!cohortId) return;
+    let live = true;
+    void api.adminListTransfers(cohortId).then((res) => {
+      if (live && res.ok) setOpenTransfers({ cohortId, count: res.data.requests.filter((r) => r.status === 'open').length });
+    });
+    return () => {
+      live = false;
+    };
+  }, [cohortId]);
 
   const reloadCohorts = useCallback(async () => {
     const res = await api.adminListCohorts();
@@ -106,6 +122,9 @@ function AdminArea() {
           <NavLink to="/admin/cohort">Cohort</NavLink>
           <NavLink to="/admin/survey">Survey</NavLink>
           <NavLink to="/admin/groups">Groups</NavLink>
+          <NavLink to="/admin/transfers">
+            Transfers{openTransfers?.cohortId === cohort.id ? ` (${openTransfers.count})` : ''}
+          </NavLink>
           <NavLink to="/admin/content">Content</NavLink>
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
@@ -117,6 +136,7 @@ function AdminArea() {
           <Route path="cohort" element={<CohortSettingsPage />} />
           <Route path="survey" element={<SurveyPage />} />
           <Route path="groups" element={<GroupsPage />} />
+          <Route path="transfers" element={<TransfersPage />} />
           <Route path="content" element={<ContentPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />

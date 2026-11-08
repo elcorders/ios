@@ -3,7 +3,7 @@ import type {
   RosterRowErrorCode,
 } from '../types';
 import { getMockCurrentEmail } from './auth';
-import { surveyInfoFor } from './survey';
+import { mockGroupOf, surveyInfoFor } from './survey';
 import { resetMockCohortState, setMockCohortWhatsApp, setMockTransfersOpen } from './cohortState';
 import {
   MOCK_ARCHIVED_COHORT, MOCK_ARCHIVED_COURSE_KEY, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS,
@@ -79,6 +79,7 @@ function toMember(e: MockEnrolment): Member {
     security: { ...sec },
     last_sign_in_at: e.status === 'active' && sec.passkeys + (sec.totp ? 1 : 0) > 0 ? '2026-03-02T08:15:00+00:00' : null,
     group_no: surveyInfoFor(e.id, e.role).group_no,
+    has_mac: e.role === 'student' ? mockGroupOf(e.id).has_mac : null,
   };
 }
 

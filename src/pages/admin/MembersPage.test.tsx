@@ -129,4 +129,20 @@ describe('MembersPage', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Actions for/ })).not.toBeInTheDocument();
   });
+
+  it('moves a student to another group from the row menu', async () => {
+    open('/admin/members');
+    fireEvent.click(await screen.findByRole('button', { name: 'Actions for Test001 Student' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Move Test001 Student to group' }));
+    await screen.findByRole('dialog', { name: 'Move to group' });
+    expect(screen.queryByRole('menuitem', { name: /Move .* to group/ })).not.toBeInTheDocument();
+    const select = await screen.findByLabelText('New group');
+    await waitFor(() => expect(select).not.toBeDisabled());
+    fireEvent.change(select, { target: { value: '6' } });
+    expect(screen.getByRole('group', { name: /Before and after/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Move' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    const row = (await screen.findByText('student001@example.edu')).closest('tr')!;
+    expect(within(row).getByText('6')).toBeInTheDocument();
+  });
 });

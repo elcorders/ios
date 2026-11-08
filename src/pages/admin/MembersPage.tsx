@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../api';
-import type { EnrolmentRole, EnrolmentStatus, Member, ResetSecurityWhat } from '../../api/types';
+import type { AdminTransfers, EnrolmentRole, EnrolmentStatus, Member, ResetSecurityWhat } from '../../api/types';
 import { messageFor } from '../../lib/errors';
 import { formatColombo } from '../../lib/time';
 import { useAdmin } from './AdminContext';
 import { Dialog } from './Dialog';
+import { BeforeAfter } from './transfers/BeforeAfter';
+import { NoteField } from './transfers/NoteField';
+import { afterSizes, spread } from './transfers/transferLogic';
 import { BulkBar, BulkConfirm, BulkSummary, type BulkSummaryData } from './table/BulkBar';
 import { FilterChips } from './table/FilterChips';
 import { RowMenu } from './table/RowMenu';
@@ -16,7 +19,8 @@ import './table/table.css';
 type Action =
   | { kind: 'edit'; member: Member }
   | { kind: 'status'; member: Member; target: EnrolmentStatus }
-  | { kind: 'reset'; member: Member };
+  | { kind: 'reset'; member: Member }
+  | { kind: 'move'; member: Member };
 
 type Filter = 'active' | 'removed' | 'discarded' | 'all';
 type SortKey = 'index' | 'name' | 'email' | 'group' | 'signin';
@@ -197,6 +201,9 @@ export function MembersPage({ role }: { role: EnrolmentRole }) {
                           m.status === 'active'
                             ? { label: 'Remove', ariaLabel: `Remove ${name}`, onSelect: () => setAction({ kind: 'status', member: m, target: 'removed' }) }
                             : { label: 'Restore', ariaLabel: `Restore ${name}`, onSelect: () => setAction({ kind: 'status', member: m, target: 'active' }) },
+                          ...(isStudents && m.status === 'active'
+                            ? [{ label: 'Move to group…', ariaLabel: `Move ${name} to group`, onSelect: () => setAction({ kind: 'move', member: m }) }]
+                            : []),
                           ...(m.status !== 'discarded'
                             ? [{ label: 'Discard', ariaLabel: `Discard ${name}`, danger: true, onSelect: () => setAction({ kind: 'status', member: m, target: 'discarded' }) }]
                             : []),
@@ -236,6 +243,9 @@ export function MembersPage({ role }: { role: EnrolmentRole }) {
       ) : null}
       {action?.kind === 'status' ? (
         <StatusDialog member={action.member} target={action.target} onCancel={() => setAction(null)} onDone={done} />
+      ) : null}
+      {action?.kind === 'move' ? (
+        <MoveDialog member={action.member} cohortId={cohort.id} onCancel={() => setAction(null)} onDone={done} />
       ) : null}
       {action?.kind === 'reset' ? (
         <ResetDialog member={action.member} onCancel={() => setAction(null)} onDone={done} />
@@ -359,6 +369,68 @@ function ResetDialog({ member, onCancel, onDone }: DialogBase) {
           <option value="totp">Authenticator app only</option>
         </select>
       </div>
+    </Dialog>
+  );
+}
+
+function MoveDialog({ member, cohortId, onCancel, onDone }: DialogBase & { cohortId: string }) {
+  const [data, setData] = useState<AdminTransfers | null>(null);
+  const [target, setTarget] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void api.adminListTransfers(cohortId).then((res) => {
+      if (!live) return;
+      if (res.ok) setData(res.data);
+      else setError(messageFor(res.error));
+    });
+    return () => {
+      live = false;
+    };
+  }, [cohortId]);
+
+  const groups = data?.groups ?? [];
+  const to = Number(target) || null;
+  const warn = to !== null && (() => {
+    const before = spread(groups);
+    const after = spread(afterSizes(groups, member.group_no, to, member.has_mac));
+    return after >= 2 && after > before;
+  })();
+
+  const submit = async () => {
+    if (to === null) {
+      setError('Choose a group first.');
+      return;
+    }
+    setBusy(true);
+    const res = await api.adminMoveStudent({ enrolmentId: member.enrolment_id, groupNo: to, note: note.trim() || null });
+    if (res.ok) {
+      void api.adminSendOutbox();
+      await onDone();
+    } else {
+      setError(messageFor(res.error));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog title="Move to group" submitLabel="Move" onCancel={onCancel} onSubmit={() => void submit()} busy={busy} error={error}>
+      <p>
+        Move {fullName(member)} {member.group_no !== null ? `(now in Group ${member.group_no})` : '(no group yet)'}. They will be emailed.
+        Any open transfer request of theirs is closed.
+      </p>
+      <div className="field">
+        <label htmlFor="move-group">New group</label>
+        <select id="move-group" value={target} onChange={(e) => setTarget(e.target.value)} disabled={!data}>
+          <option value="">Choose a group…</option>
+          {groups.filter((g) => g.no !== member.group_no).map((g) => <option key={g.no} value={g.no}>{g.name}</option>)}
+        </select>
+      </div>
+      {to !== null ? <BeforeAfter groups={groups} from={member.group_no} to={to} hasMac={member.has_mac} warn={warn} /> : null}
+      <NoteField value={note} onChange={setNote} />
     </Dialog>
   );
 }

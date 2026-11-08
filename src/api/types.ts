@@ -128,6 +128,8 @@ export interface Member {
   last_sign_in_at: IsoDateTime | null;
   /** S7: student's group number (null for instructors / not grouped yet). */
   group_no: number | null;
+  /** S8: survey answer (null for instructors / not answered). */
+  has_mac: boolean | null;
 }
 
 export interface UpsertCohortInput {
