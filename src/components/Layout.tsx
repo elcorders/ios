@@ -8,7 +8,7 @@ export function Layout() {
   const wide = pathname.startsWith('/admin');
   const full = pathname.startsWith('/c/'); // content viewer: edge to edge
   return (
-    <div className="app">
+    <div className={full ? 'app app-full' : 'app'}>
       <header className="app-header">
         <div className="app-header-inner">
           <Link to="/" className="app-name">

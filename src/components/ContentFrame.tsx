@@ -18,7 +18,8 @@ export function buildSrcDoc(html: string): string {
   return idx >= 0 ? out.slice(0, idx) + HEIGHT_SCRIPT + out.slice(idx) : out + HEIGHT_SCRIPT;
 }
 
-export function ContentFrame({ html, title }: { html: string; title: string }) {
+/** `fill`: the frame takes its container's height and scrolls inside (own sticky menus keep working). */
+export function ContentFrame({ html, title, fill = false }: { html: string; title: string; fill?: boolean }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(400);
   const srcDoc = useMemo(() => buildSrcDoc(html), [html]);
@@ -40,11 +41,11 @@ export function ContentFrame({ html, title }: { html: string; title: string }) {
   return (
     <iframe
       ref={ref}
-      className="content-frame"
+      className={fill ? 'content-frame fill' : 'content-frame'}
       title={title}
       sandbox={CONTENT_SANDBOX}
       srcDoc={srcDoc}
-      style={{ height }}
+      style={fill ? undefined : { height }}
     />
   );
 }

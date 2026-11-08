@@ -65,8 +65,8 @@ export function ContentView() {
           </button>
         ) : null}
       </div>
-      <div ref={frameWrap}>
-        <ContentFrame html={item.body_html} title={item.title} />
+      <div ref={frameWrap} className="content-view-frame">
+        <ContentFrame html={item.body_html} title={item.title} fill />
       </div>
     </section>
   );

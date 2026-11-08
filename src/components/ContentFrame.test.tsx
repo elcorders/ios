@@ -9,6 +9,13 @@ describe('ContentFrame', () => {
     expect(f.getAttribute('sandbox')).toBe('allow-scripts allow-popups allow-popups-to-escape-sandbox');
     expect(f.getAttribute('sandbox')).not.toContain('allow-same-origin');
   });
+  it('fill mode: no inline height (the container sizes it), same sandbox', () => {
+    render(<ContentFrame html="<p>hi</p>" title="Filled" fill />);
+    const f = screen.getByTitle('Filled');
+    expect(f.style.height).toBe('');
+    expect(f.className).toContain('fill');
+    expect(f.getAttribute('sandbox')).not.toContain('allow-same-origin');
+  });
   it('injects base and height script', () => {
     const doc = buildSrcDoc('<html><head></head><body><p>x</p></body></html>');
     expect(doc).toContain('<base target="_blank">');

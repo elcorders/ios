@@ -366,3 +366,9 @@ details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
 .content-view-title p { margin: 0; font-size: 0.8rem; }
 .content-view .content-frame { border-radius: 0; border-top: 1px solid var(--border); }
 .content-frame:fullscreen { height: 100% !important; }
+/* Viewer fills the screen below the header; the page scrolls inside the frame. */
+.app.app-full { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.app-full .app-main.full { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 0; }
+.app-full .content-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.content-view-frame { flex: 1; min-height: 0; }
+.content-frame.fill { height: 100%; }
