@@ -19,6 +19,8 @@ interface State {
   security: Map<string, { passkeys: number; totp: boolean }>;
   enrolments: MockEnrolment[];
   pending: PendingRegistration[];
+  /** S9: user id -> previous emails, newest first. */
+  previousEmails: Map<string, string[]>;
 }
 
 function seed(): State {
@@ -31,6 +33,7 @@ function seed(): State {
     security: new Map(MOCK_USERS.map((u) => [u.profile.id, { ...u.security }])),
     enrolments: seedEnrolments(),
     pending: seedPending(),
+    previousEmails: new Map(),
   };
 }
 
@@ -80,6 +83,7 @@ function toMember(e: MockEnrolment): Member {
     last_sign_in_at: e.status === 'active' && sec.passkeys + (sec.totp ? 1 : 0) > 0 ? '2026-03-02T08:15:00+00:00' : null,
     group_no: surveyInfoFor(e.id, e.role).group_no,
     has_mac: e.role === 'student' ? mockGroupOf(e.id).has_mac : null,
+    previous_emails: [...(state.previousEmails.get(e.user_id) ?? [])],
   };
 }
 
@@ -104,7 +108,7 @@ type AdminMethods = Pick<
   Api,
   | 'adminListCohorts' | 'adminUpsertCohort' | 'adminUpdateCohortSettings' | 'listMembers'
   | 'adminUpdateProfile' | 'adminSetEnrolmentStatus' | 'adminListPending' | 'approvePending'
-  | 'rejectPending' | 'adminResetSecurity' | 'rosterImport' | 'adminSetPendingStatus'
+  | 'rejectPending' | 'adminResetSecurity' | 'rosterImport' | 'adminSetPendingStatus' | 'adminChangeEmail'
 >;
 
 export const mockAdmin: Partial<Api> & AdminMethods = {
@@ -171,6 +175,22 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
       phone: input.phone || null, updated_at: '2026-06-01T09:00:00+05:30',
     });
     return ok({ ...p });
+  }),
+
+  adminChangeEmail: guard((userId, email) => {
+    const p = state.profiles.get(userId);
+    if (!p) return fail('not_found');
+    const next = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+$/.test(next)) return fail('invalid_input');
+    for (const other of state.profiles.values()) {
+      if (other.id !== userId && other.email === next) return fail('conflict');
+    }
+    const prev = (state.previousEmails.get(userId) ?? []).filter((x) => x !== next);
+    if (p.email !== next) {
+      state.previousEmails.set(userId, [p.email, ...prev.filter((x) => x !== p.email)]);
+      p.email = next;
+    }
+    return ok({ user_id: userId, email: p.email, previous_emails: [...(state.previousEmails.get(userId) ?? [])] });
   }),
 
   adminSetEnrolmentStatus: guard((enrolmentId, status) => {

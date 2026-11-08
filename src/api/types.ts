@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -130,6 +130,8 @@ export interface Member {
   group_no: number | null;
   /** S8: survey answer (null for instructors / not answered). */
   has_mac: boolean | null;
+  /** S9: earlier emails of this person, newest first (admin only; [] otherwise). */
+  previous_emails: string[];
 }
 
 export interface UpsertCohortInput {
@@ -163,6 +165,8 @@ export type RosterRowErrorCode =
   | 'invalid_email'
   | 'missing_name'
   | 'index_conflict'
+  /** S9: the row's index belongs to a member whose new email is another member's current email. */
+  | 'email_conflict'
   | 'duplicate_in_file'
   | 'invalid_phone';
 
@@ -175,7 +179,9 @@ export interface RosterImportInput {
 
 export interface RosterImportResult {
   dry_run: boolean;
-  add: RosterRow[];
+  /** S9: an existing person (matched by index) new to this cohort carries `email_change` when their email changes. */
+  add: (RosterRow & { email_change?: [string, string] })[];
+  /** S9: `changes.email = [old, new]` when the index matched and the email changed. */
   update: { row: RosterRow; changes: Record<string, [unknown, unknown]> }[];
   unchanged: number;
   not_in_file: Member[];
@@ -471,4 +477,18 @@ export interface S8Api {
   adminApproveSwap(requestA: Uuid, requestB: Uuid, note?: string | null): Promise<Result<TransferDecision>>;
   adminMoveStudent(input: MoveStudentInput): Promise<Result<MoveResult>>;
   adminSendOutbox(retryFailed?: boolean): Promise<Result<OutboxSendResult>>;
+}
+
+// ───────────────────────── S9 — Email changes (CONTRACT.md §S9) ─────────────────────────
+
+export interface EmailChangeResult {
+  user_id: Uuid;
+  email: string;
+  /** Newest first. */
+  previous_emails: string[];
+}
+
+/** S9 methods. */
+export interface S9Api {
+  adminChangeEmail(userId: Uuid, email: string): Promise<Result<EmailChangeResult>>;
 }
