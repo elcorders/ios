@@ -776,6 +776,10 @@ export type Database = {
         Returns: Json
       }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }
+      admin_reset_survey: {
+        Args: { p_cohort_id: string; p_enrolment_ids: string[] }
+        Returns: Json
+      }
       admin_set_content_publish: {
         Args: { p_id: string; p_published_at?: string }
         Returns: Json
