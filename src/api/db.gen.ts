@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       audit_log: {
@@ -205,6 +180,62 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_outbox: {
+        Row: {
+          attempts: number
+          cohort_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          last_error: string | null
+          payload: Json
+          ref_id: string
+          ref_table: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["outbox_status"]
+          to_email: string
+          to_name: string
+        }
+        Insert: {
+          attempts?: number
+          cohort_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          payload: Json
+          ref_id: string
+          ref_table: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["outbox_status"]
+          to_email: string
+          to_name?: string
+        }
+        Update: {
+          attempts?: number
+          cohort_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          payload?: Json
+          ref_id?: string
+          ref_table?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["outbox_status"]
+          to_email?: string
+          to_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
             referencedColumns: ["id"]
           },
         ]
@@ -524,13 +555,137 @@ export type Database = {
           },
         ]
       }
+      transfer_requests: {
+        Row: {
+          admin_note: string | null
+          closed_by: string | null
+          cohort_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_group_id: string | null
+          enrolment_id: string
+          from_group_id: string
+          id: string
+          pref1_group_id: string
+          pref2_group_id: string
+          reason: string
+          status: Database["public"]["Enums"]["transfer_status"]
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          closed_by?: string | null
+          cohort_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_group_id?: string | null
+          enrolment_id: string
+          from_group_id: string
+          id?: string
+          pref1_group_id: string
+          pref2_group_id: string
+          reason: string
+          status?: Database["public"]["Enums"]["transfer_status"]
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          closed_by?: string | null
+          cohort_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_group_id?: string | null
+          enrolment_id?: string
+          from_group_id?: string
+          id?: string
+          pref1_group_id?: string
+          pref2_group_id?: string
+          reason?: string
+          status?: Database["public"]["Enums"]["transfer_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_requests_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_decided_group_id_fkey"
+            columns: ["decided_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_enrolment_id_fkey"
+            columns: ["enrolment_id"]
+            isOneToOne: false
+            referencedRelation: "enrolments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_from_group_id_fkey"
+            columns: ["from_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_pref1_group_id_fkey"
+            columns: ["pref1_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_pref2_group_id_fkey"
+            columns: ["pref2_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_swap: {
+        Args: { p_note?: string; p_request_a: string; p_request_b: string }
+        Returns: Json
+      }
       admin_copy_tutorials: {
         Args: { p_from_cohort_id: string; p_to_cohort_id: string }
+        Returns: Json
+      }
+      admin_decide_transfer: {
+        Args: {
+          p_approve: boolean
+          p_group_no?: number
+          p_note?: string
+          p_request_id: string
+        }
         Returns: Json
       }
       admin_delete_content: { Args: { p_id: string }; Returns: Json }
@@ -551,6 +706,11 @@ export type Database = {
         Returns: Json[]
       }
       admin_list_survey: { Args: { p_cohort_id: string }; Returns: Json }
+      admin_list_transfers: { Args: { p_cohort_id: string }; Returns: Json }
+      admin_move_student: {
+        Args: { p_enrolment_id: string; p_group_no: number; p_note?: string }
+        Returns: Json
+      }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }
       admin_set_content_publish: {
         Args: { p_id: string; p_published_at?: string }
@@ -568,6 +728,10 @@ export type Database = {
           p_pending_id: string
           p_status: Database["public"]["Enums"]["pending_status"]
         }
+        Returns: Json
+      }
+      admin_transfer_row_json: {
+        Args: { t: Database["public"]["Tables"]["transfer_requests"]["Row"] }
         Returns: Json
       }
       admin_update_cohort_settings: {
@@ -635,6 +799,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      cancel_transfer: { Args: { p_request_id: string }; Returns: Json }
       cohort_json: {
         Args: { c: Database["public"]["Tables"]["cohorts"]["Row"] }
         Returns: Json
@@ -661,6 +826,7 @@ export type Database = {
       }
       get_content: { Args: { p_id: string }; Returns: Json }
       get_me: { Args: never; Returns: Json }
+      get_my_transfers: { Args: { p_cohort_id: string }; Returns: Json }
       has_role: {
         Args: {
           p_cohort_id: string
@@ -693,6 +859,53 @@ export type Database = {
         Returns: Json
       }
       normalize_phone: { Args: { p: string }; Returns: string }
+      outbox_claim: {
+        Args: { p_limit: number }
+        Returns: {
+          attempts: number
+          cohort_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          last_error: string | null
+          payload: Json
+          ref_id: string
+          ref_table: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["outbox_status"]
+          to_email: string
+          to_name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "email_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      outbox_enqueue: {
+        Args: {
+          p_cohort_id: string
+          p_from_no: number
+          p_kind: string
+          p_note: string
+          p_ref_id: string
+          p_ref_table: string
+          p_to_no: number
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      outbox_mark: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_status: Database["public"]["Enums"]["outbox_status"]
+        }
+        Returns: Json
+      }
+      outbox_pending_count: { Args: never; Returns: number }
+      outbox_reset_failed: { Args: never; Returns: number }
       pending_approve_finish: {
         Args: { p_actor: string; p_pending_id: string; p_user_id: string }
         Returns: Json
@@ -706,6 +919,15 @@ export type Database = {
       }
       profile_json: {
         Args: { p: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: Json
+      }
+      request_transfer: {
+        Args: {
+          p_cohort_id: string
+          p_pref1_no: number
+          p_pref2_no: number
+          p_reason: string
+        }
         Returns: Json
       }
       roster_apply_row: {
@@ -757,13 +979,29 @@ export type Database = {
       totp_pending_get: { Args: { p_user_id: string }; Returns: Json }
       totp_recent_failures: { Args: { p_email: string }; Returns: number }
       totp_user_email: { Args: { p_user_id: string }; Returns: string }
+      transfer_approve_one: {
+        Args: {
+          p_note: string
+          p_req_id: string
+          p_to: Database["public"]["Tables"]["groups"]["Row"]
+        }
+        Returns: undefined
+      }
+      transfer_group_stats: { Args: { p_cohort_id: string }; Returns: Json }
+      transfer_json: {
+        Args: { t: Database["public"]["Tables"]["transfer_requests"]["Row"] }
+        Returns: Json
+      }
+      transfer_row_by_id: { Args: { p_id: string }; Returns: Json }
     }
     Enums: {
       cohort_status: "active" | "archived"
       content_kind: "resource" | "tutorial"
       enrolment_role: "student" | "instructor"
       enrolment_status: "active" | "removed" | "discarded"
+      outbox_status: "queued" | "sent" | "failed" | "skipped"
       pending_status: "pending" | "approved" | "rejected" | "discarded"
+      transfer_status: "open" | "approved" | "rejected" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -889,16 +1127,15 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       cohort_status: ["active", "archived"],
       content_kind: ["resource", "tutorial"],
       enrolment_role: ["student", "instructor"],
       enrolment_status: ["active", "removed", "discarded"],
+      outbox_status: ["queued", "sent", "failed", "skipped"],
       pending_status: ["pending", "approved", "rejected", "discarded"],
+      transfer_status: ["open", "approved", "rejected", "cancelled"],
     },
   },
 } as const

@@ -91,4 +91,7 @@ export async function cleanup(): Promise<void> {
   // pending_registrations has no FK to auth users; match by the fictional address pattern.
   const del = await sb.from('pending_registrations').delete().or('email.like.e2e%@example.edu,email.like.nobody%@example.edu');
   if (del.error) throw new Error(`pending cleanup: ${del.error.message}`);
+  // S8: queued/skipped emails to fictional test addresses (no FK to users).
+  const ob = await sb.from('email_outbox').delete().like('to_email', 'e2e%@example.edu');
+  if (ob.error) throw new Error(`outbox cleanup: ${ob.error.message}`);
 }
