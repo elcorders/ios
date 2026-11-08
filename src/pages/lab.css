@@ -13,7 +13,13 @@
 .lab-slot-off { opacity: 0.55; cursor: not-allowed; }
 .lab-slot-time { font-weight: 600; flex: 1; }
 .lab-slot-status { font-size: 0.85rem; }
-.lab-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; position: sticky; bottom: 0.5rem; }
+.lab-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  position: sticky; bottom: 0.5rem; z-index: 2;
+  padding: 0.6rem 0.75rem; border-radius: var(--radius-sm);
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
 .lab-bookings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .lab-bookings li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; justify-content: space-between; }
 .lab-bookings li > span:first-child { flex: 1 1 12rem; }

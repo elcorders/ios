@@ -92,6 +92,9 @@ export async function cleanup(): Promise<void> {
   const del = await sb.from('pending_registrations').delete().or('email.like.e2e%@example.edu,email.like.nobody%@example.edu');
   if (del.error) throw new Error(`pending cleanup: ${del.error.message}`);
   // S8: queued/skipped emails to fictional test addresses (no FK to users).
+  // S3: closures created by e2e specs carry an "E2E …" reason.
+  const lc = await sb.from('lab_closures').delete().like('reason', 'E2E %');
+  if (lc.error) throw new Error(`closure cleanup: ${lc.error.message}`);
   const ob = await sb.from('email_outbox').delete().like('to_email', 'e2e%@example.edu');
   if (ob.error) throw new Error(`outbox cleanup: ${ob.error.message}`);
 }
