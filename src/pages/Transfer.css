@@ -1,0 +1,5 @@
+.transfer-badge { display: inline-block; }
+.transfer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.transfer-list li { display: grid; gap: 0.15rem; }
+.transfer-counter { font-size: 0.85rem; }
+.transfer-form textarea { min-height: 6rem; width: 100%; }

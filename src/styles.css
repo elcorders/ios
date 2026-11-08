@@ -265,7 +265,8 @@ p.error[role='alert'] {
   flex: none; width: 3rem; height: 3rem; border-radius: 12px; display: grid; place-items: center;
   background: linear-gradient(135deg, rgba(61, 139, 255, 0.25), rgba(139, 92, 246, 0.25)); color: var(--accent);
 }
-.group-card p { margin: 0; color: var(--muted); }
+.group-card p { margin: 0; color: var(--muted); flex: 1; }
+.group-card a { font-size: 0.9rem; }
 .group-card strong { display: block; color: var(--text); font-size: 1.25rem; }
 .whatsapp-card .button { background: #25d366; color: #052e16; box-shadow: 0 6px 18px -6px rgba(37, 211, 102, 0.6); }
 .whatsapp-card .button:hover { background: #3ee07b; color: #052e16; }

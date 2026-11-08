@@ -29,6 +29,7 @@ export function Home() {
             <p>
               Your group: <strong>{e.group_name}</strong>
             </p>
+            <Link to="/transfer">Request a group change</Link>
           </div>
         ))}
       <div className="quick-links">
