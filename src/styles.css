@@ -349,3 +349,20 @@ details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
   .main-nav { gap: 0; }
   .main-nav a { padding: 0.4rem 0.5rem; font-size: 0.82rem; }
 }
+/* Content viewer: full width (Layout sets .app-main.full on /c/:id) */
+.app-main.full { max-width: none; padding: 0 0 env(safe-area-inset-bottom); }
+.content-view-bar {
+  display: flex; align-items: center; gap: 0.75rem;
+  max-width: 72rem; margin: 0 auto; padding: 0.75rem 1rem;
+}
+.content-view-bar .back-link {
+  flex: none; display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); text-decoration: none; font-size: 1.1rem;
+}
+.content-view-bar .back-link:hover { background: var(--surface-2); }
+.content-view-title { flex: 1; min-width: 0; }
+.content-view-title h1 { font-size: 1.1rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.content-view-title p { margin: 0; font-size: 0.8rem; }
+.content-view .content-frame { border-radius: 0; border-top: 1px solid var(--border); }
+.content-frame:fullscreen { height: 100% !important; }

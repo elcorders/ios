@@ -6,6 +6,7 @@ export function Layout() {
   const { me } = useAuth();
   const { pathname } = useLocation();
   const wide = pathname.startsWith('/admin');
+  const full = pathname.startsWith('/c/'); // content viewer: edge to edge
   return (
     <div className="app">
       <header className="app-header">
@@ -23,7 +24,7 @@ export function Layout() {
           </nav>
         </div>
       </header>
-      <main className={wide ? 'app-main wide' : 'app-main'}>
+      <main className={full ? 'app-main full' : wide ? 'app-main wide' : 'app-main'}>
         <Outlet />
       </main>
     </div>
