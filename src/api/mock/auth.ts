@@ -3,6 +3,7 @@ import { MOCK_CODE, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS, type MockUser } fr
 import { getMockCohortWhatsApp, resetMockCohortState } from './cohortState';
 import { resetMockSurvey, surveyInfoFor } from './survey';
 import { resetMockTransfers } from './transfers';
+import { resetMockLab } from './lab';
 
 const ok = <T>(data: T): Result<T> => ({ ok: true, data });
 const fail = <T>(code: string, message = code): Result<T> => ({ ok: false, error: { code, message } satisfies ApiError });
@@ -18,6 +19,7 @@ export function resetMockAuth(): void {
   resetMockCohortState();
   resetMockSurvey();
   resetMockTransfers();
+  resetMockLab();
 }
 
 const securityOverrides = new Map<string, Partial<MockUser['security']>>();
