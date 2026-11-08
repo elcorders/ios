@@ -32,13 +32,32 @@ async function parseSpreadsheet(file: File): Promise<string[][]> {
 const show = (v: unknown) => (v === null || v === undefined || v === '' ? '(empty)' : String(v));
 const rowLabel = (r: RosterRow) => `${r.first_name} ${r.last_name}`.trim();
 
+const ERROR_TEXT: Partial<Record<string, string>> = {
+  email_conflict: 'This email already belongs to another member, so the email cannot be changed to it.',
+};
+
 function Diff({ result, lines }: { result: RosterImportResult; lines: number[] | null }) {
+  const emailChanges =
+    result.update.filter((u) => u.changes.email).length + result.add.filter((a) => a.email_change).length;
   return (
     <div className="stack">
+      {emailChanges > 0 ? (
+        <p role="status"><strong>{emailChanges} email {emailChanges === 1 ? 'change' : 'changes'}</strong></p>
+      ) : null}
       <h3>Add ({result.add.length})</h3>
       {result.add.length > 0 ? (
         <ul>
-          {result.add.map((r) => <li key={r.email}>{rowLabel(r)} — {r.email}</li>)}
+          {result.add.map((r) => (
+            <li key={r.email}>
+              {rowLabel(r)} — {r.email}
+              {r.email_change ? (
+                <>
+                  {' '}<span className="badge">Email change</span>{' '}
+                  Email: {r.email_change[0]} → {r.email_change[1]} (existing person, new to this cohort)
+                </>
+              ) : null}
+            </li>
+          ))}
         </ul>
       ) : null}
       <h3>Update ({result.update.length})</h3>
@@ -47,7 +66,15 @@ function Diff({ result, lines }: { result: RosterImportResult; lines: number[] |
           {result.update.map(({ row, changes }) => (
             <li key={row.email}>
               {row.email}:{' '}
-              {Object.entries(changes).map(([f, [a, b]]) => `${f} ${show(a)} → ${show(b)}`).join('; ')}
+              {changes.email ? (
+                <>
+                  <span className="badge">Email change</span>{' '}
+                  <strong>Email: {show(changes.email[0])} → {show(changes.email[1])}</strong>
+                  {Object.keys(changes).length > 1 ? '; ' : ''}
+                </>
+              ) : null}
+              {Object.entries(changes).filter(([f]) => f !== 'email')
+                .map(([f, [a, b]]) => `${f} ${show(a)} → ${show(b)}`).join('; ')}
             </li>
           ))}
         </ul>
@@ -67,7 +94,7 @@ function Diff({ result, lines }: { result: RosterImportResult; lines: number[] |
         <ul>
           {result.errors.map((e) => (
             <li key={`${e.row_index}-${e.code}`} className="error">
-              Row {lines?.[e.row_index] ?? e.row_index + 2}: {e.code} — {e.message}
+              Row {lines?.[e.row_index] ?? e.row_index + 2}: {e.code} — {ERROR_TEXT[e.code] ?? e.message}
             </li>
           ))}
         </ul>

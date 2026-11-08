@@ -67,14 +67,15 @@ describe('mock rosterImport', () => {
       row(81, { email: 'not-an-email' }),
       row(82, { first_name: ' ' }),
       row(80),
-      row(83, { index_no: 'COBSCCOMP251P-001' }),
+      row(83, { index_no: 'COBSCCOMP251P-090' }),
+      row(83, { index_no: 'COBSCCOMP251P-090', email: 'student183@example.edu' }),
       row(84, { phone: '12345' }),
       row(85),
     ], false);
     expect(r.errors.map((e) => [e.row_index, e.code])).toEqual([
-      [1, 'invalid_email'], [2, 'missing_name'], [3, 'duplicate_in_file'], [4, 'index_conflict'], [5, 'invalid_phone'],
+      [1, 'invalid_email'], [2, 'missing_name'], [3, 'duplicate_in_file'], [5, 'duplicate_in_file'], [6, 'invalid_phone'],
     ]);
-    expect(r.add.map((x) => x.email)).toEqual(['student080@example.edu', 'student085@example.edu']);
+    expect(r.add.map((x) => x.email)).toEqual(['student080@example.edu', 'student083@example.edu', 'student085@example.edu']);
     expect(r.applied).toBe(true);
   });
 
@@ -100,5 +101,47 @@ describe('mock rosterImport', () => {
   it('rejects more than 500 rows', async () => {
     const res = await api.rosterImport({ ...base, dry_run: true, rows: Array.from({ length: 501 }, (_, i) => row(i)) });
     expect(!res.ok && res.error.code).toBe('invalid_input');
+  });
+
+  describe('index-first identity (S9)', () => {
+    const t1 = { first_name: 'Test001', last_name: 'Student' };
+
+    it('index match with a new email is an update carrying changes.email', async () => {
+      const r = await run([{ email: 'new001@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 }]);
+      expect(r.add).toHaveLength(0);
+      expect(r.update).toHaveLength(1);
+      expect(r.update[0]!.changes.email).toEqual(['student001@example.edu', 'new001@example.edu']);
+      expect(r.not_in_file.some((m) => m.email === 'student001@example.edu')).toBe(false);
+    });
+
+    it('apply changes the email and records the old one', async () => {
+      await run([{ email: 'new001@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 }], false);
+      const members = await api.listMembers(MOCK_COHORT.id, 'student');
+      const m = members.ok ? members.data.find((x) => x.index_no === 'COBSCCOMP251P-001') : undefined;
+      expect(m?.email).toBe('new001@example.edu');
+      expect(m?.previous_emails).toEqual(['student001@example.edu']);
+      const again = await run([{ email: 'new001@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 }]);
+      expect(again.unchanged).toBe(1);
+    });
+
+    it("a new email that is another member's email is email_conflict", async () => {
+      const r = await run([{ email: 'student002@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 }]);
+      expect(r.errors.map((e) => e.code)).toEqual(['email_conflict']);
+      expect(r.update).toHaveLength(0);
+      expect(r.add).toHaveLength(0);
+    });
+
+    it('same index with different emails in one file is duplicate_in_file', async () => {
+      const r = await run([
+        { email: 'new001@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 },
+        { email: 'other001@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 },
+      ]);
+      expect(r.errors.map((e) => [e.row_index, e.code])).toEqual([[1, 'duplicate_in_file']]);
+    });
+
+    it('combines the email change with other changes', async () => {
+      const r = await run([{ email: 'new001@example.edu', index_no: 'COBSCCOMP251P-001', ...t1 }], true, { role: 'instructor' });
+      expect(r.update[0]!.changes).toMatchObject({ email: ['student001@example.edu', 'new001@example.edu'], role: ['student', 'instructor'] });
+    });
   });
 });

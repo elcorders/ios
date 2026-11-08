@@ -64,4 +64,23 @@ describe('ImportPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
     expect(await screen.findByText('Added student090@example.edu.')).toBeInTheDocument();
   });
+
+  it('shows email changes and a summary, and flags email conflicts', async () => {
+    const input = await openImport();
+    fireEvent.change(input, {
+      target: {
+        files: [csv([
+          'Email,First Name,Last Name,Index No',
+          'new001@example.edu,Test001,Student,COBSCCOMP251P-001',
+          'student003@example.edu,Test003,Student,COBSCCOMP251P-002',
+        ].join('\n'))],
+      },
+    });
+    await screen.findByText(/roster\.csv: 2 rows/);
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('1 email change')).toBeInTheDocument();
+    expect(screen.getByText('Email: student001@example.edu → new001@example.edu')).toBeInTheDocument();
+    expect(screen.getByText('Email change')).toBeInTheDocument();
+    expect(screen.getByText(/Row 3: email_conflict — This email already belongs to another member/)).toBeInTheDocument();
+  });
 });

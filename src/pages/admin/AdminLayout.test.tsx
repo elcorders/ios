@@ -70,8 +70,7 @@ describe('admin area', () => {
     open('/admin/members');
     await openMenu('Test001 Student', 'Edit');
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByLabelText('Email')).toHaveAttribute('readonly');
-    expect(within(dialog).getByText('Change via import.')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Email')).toHaveValue('student001@example.edu');
     fireEvent.change(within(dialog).getByLabelText('First name'), { target: { value: 'Renamed' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('button', { name: 'Actions for Renamed Student' })).toBeInTheDocument();

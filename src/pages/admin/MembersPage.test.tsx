@@ -145,4 +145,33 @@ describe('MembersPage', () => {
     const row = (await screen.findByText('student001@example.edu')).closest('tr')!;
     expect(within(row).getByText('6')).toBeInTheDocument();
   });
+
+  it('changes the email after a confirm step and shows previous emails on reopen', async () => {
+    open('/admin/members');
+    await menuItem('Test001 Student', 'Edit');
+    const dialog = await screen.findByRole('dialog');
+    const email = within(dialog).getByLabelText('Email');
+    expect(email).toHaveValue('student001@example.edu');
+    expect(within(dialog).queryByText(/Previous emails/)).not.toBeInTheDocument();
+    fireEvent.change(email, { target: { value: 'New001@example.edu' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    const confirm = await screen.findByRole('dialog');
+    expect(confirm).toHaveTextContent('Sign-in email changes from student001@example.edu to new001@example.edu.');
+    expect(confirm).toHaveTextContent('Passkeys and the group stay.');
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Change email' }));
+    expect(await screen.findByText('new001@example.edu')).toBeInTheDocument();
+    expect(screen.queryByText('student001@example.edu')).not.toBeInTheDocument();
+    await menuItem('Test001 Student', 'Edit');
+    expect(await screen.findByText('Previous emails: student001@example.edu')).toBeInTheDocument();
+  });
+
+  it('shows a friendly message when the email belongs to another member', async () => {
+    open('/admin/members');
+    await menuItem('Test001 Student', 'Edit');
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Email'), { target: { value: 'student002@example.edu' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Change email' }));
+    expect(await screen.findByText('That email belongs to another member.')).toBeInTheDocument();
+  });
 });

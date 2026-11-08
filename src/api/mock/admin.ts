@@ -280,7 +280,11 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
     };
     const seen = new Set<string>();
     const fileIndex = new Map<string, string>(); // index_no -> email, within this file
-    const planned: { row: RosterRow; profile: Profile | undefined; changes: Record<string, [unknown, unknown]> }[] = [];
+    const matchedIds = new Set<string>();
+    const planned: {
+      row: RosterRow; profile: Profile | undefined; changes: Record<string, [unknown, unknown]>;
+      emailChange?: [string, string];
+    }[] = [];
 
     input.rows.forEach((raw, row_index) => {
       const err = (code: RosterRowErrorCode, message: string) => result.errors.push({ row_index, code, message });
@@ -296,23 +300,37 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
       }
       const index_no = (raw.index_no ?? '').trim() || undefined;
       if (index_no) {
-        const owner = [...state.profiles.values()].find((p) => p.index_no === index_no);
-        if ((owner && owner.email.toLowerCase() !== email) || (fileIndex.has(index_no) && fileIndex.get(index_no) !== email)) {
-          return err('index_conflict', 'Index number belongs to another email');
+        if (fileIndex.has(index_no) && fileIndex.get(index_no) !== email) {
+          return err('duplicate_in_file', 'Index number appears more than once with different emails');
         }
-        fileIndex.set(index_no, email);
       }
+      // Identity: index number first, then email.
+      const byIndex = index_no ? [...state.profiles.values()].find((p) => p.index_no === index_no) : undefined;
+      const byEmail = [...state.profiles.values()].find((p) => p.email.toLowerCase() === email);
+      let emailChange: [string, string] | undefined;
+      let profile = byEmail;
+      if (byIndex && byIndex.email.toLowerCase() !== email) {
+        if (byEmail) {
+          return err('email_conflict', `This email belongs to another member (index ${byEmail.index_no ?? 'none'}).`);
+        }
+        profile = byIndex;
+        emailChange = [byIndex.email, email];
+      } else if (byIndex) {
+        profile = byIndex;
+      }
+      if (index_no) fileIndex.set(index_no, email);
       seen.add(email);
+      if (profile) matchedIds.add(profile.id);
       const lms_username = (raw.lms_username ?? '').trim() || undefined;
       const row: RosterRow = { email, first_name: raw.first_name.trim(), last_name: raw.last_name.trim() };
       if (index_no) row.index_no = index_no;
       if (lms_username) row.lms_username = lms_username;
       if (phone) row.phone = phone;
 
-      const profile = [...state.profiles.values()].find((p) => p.email.toLowerCase() === email);
       const changes: Record<string, [unknown, unknown]> = {};
       const enrolment = profile && state.enrolments.find((e) => e.cohort_id === cohort.id && e.user_id === profile.id);
       if (profile && enrolment) {
+        if (emailChange) changes.email = emailChange;
         for (const f of ['index_no', 'first_name', 'last_name', 'lms_username', 'phone'] as const) {
           const next = row[f];
           if (next !== undefined && next !== profile[f]) changes[f] = [profile[f], next];
@@ -322,19 +340,19 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
         if (Object.keys(changes).length === 0) result.unchanged += 1;
         else result.update.push({ row, changes });
       } else {
-        result.add.push(row);
+        result.add.push(emailChange ? { ...row, email_change: emailChange } : row);
       }
-      planned.push({ row, profile, changes });
+      planned.push({ row, profile, changes, emailChange });
     });
 
     result.not_in_file = state.enrolments
       .filter((e) => e.cohort_id === cohort.id && e.role === input.role && e.status === 'active')
-      .filter((e) => !seen.has(state.profiles.get(e.user_id)!.email.toLowerCase()))
+      .filter((e) => !matchedIds.has(e.user_id))
       .map(toMember);
 
     if (input.dry_run) return ok(result);
 
-    for (const { row, profile, changes } of planned) {
+    for (const { row, profile, changes, emailChange } of planned) {
       let p = profile;
       if (!p) {
         p = {
@@ -345,6 +363,11 @@ export const mockAdmin: Partial<Api> & AdminMethods = {
         };
         state.profiles.set(p.id, p);
         state.security.set(p.id, { passkeys: 0, totp: false });
+      }
+      if (emailChange) {
+        const prev = state.previousEmails.get(p.id) ?? [];
+        state.previousEmails.set(p.id, [emailChange[0], ...prev.filter((x) => x !== emailChange[0] && x !== emailChange[1])]);
+        p.email = emailChange[1];
       }
       let enrolment = state.enrolments.find((e) => e.cohort_id === cohort.id && e.user_id === p.id);
       if (!enrolment) {

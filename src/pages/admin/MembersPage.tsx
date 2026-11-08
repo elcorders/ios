@@ -261,37 +261,89 @@ interface DialogBase {
 }
 
 function EditDialog({ member, onCancel, onDone }: DialogBase) {
+  const [email, setEmail] = useState(member.email);
   const [first, setFirst] = useState(member.first_name);
   const [last, setLast] = useState(member.last_name);
   const [indexNo, setIndexNo] = useState(member.index_no ?? '');
   const [username, setUsername] = useState(member.lms_username ?? '');
   const [phone, setPhone] = useState(member.phone ?? '');
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async () => {
+  const nextEmail = email.trim().toLowerCase();
+  const emailChanged = nextEmail !== member.email.toLowerCase();
+
+  const profileChanged =
+    first.trim() !== member.first_name || last.trim() !== member.last_name ||
+    (indexNo.trim() || null) !== member.index_no || (username.trim() || null) !== member.lms_username ||
+    (phone.trim() || null) !== member.phone;
+
+  const run = async () => {
     setBusy(true);
-    const res = await api.adminUpdateProfile({
-      user_id: member.user_id,
-      first_name: first.trim(),
-      last_name: last.trim(),
-      index_no: indexNo.trim() || null,
-      lms_username: username.trim() || null,
-      phone: phone.trim() || null,
-    });
-    if (res.ok) await onDone();
-    else {
-      setError(messageFor(res.error));
-      setBusy(false);
+    if (emailChanged) {
+      const res = await api.adminChangeEmail(member.user_id, nextEmail);
+      if (!res.ok) {
+        setError(res.error.code === 'conflict' ? 'That email belongs to another member.'
+          : res.error.code === 'invalid_input' ? 'Enter a valid email.' : messageFor(res.error));
+        setConfirming(false);
+        setBusy(false);
+        return;
+      }
     }
+    if (profileChanged || !emailChanged) {
+      const res = await api.adminUpdateProfile({
+        user_id: member.user_id,
+        first_name: first.trim(),
+        last_name: last.trim(),
+        index_no: indexNo.trim() || null,
+        lms_username: username.trim() || null,
+        phone: phone.trim() || null,
+      });
+      if (!res.ok) {
+        setError(messageFor(res.error));
+        setConfirming(false);
+        setBusy(false);
+        return;
+      }
+    }
+    await onDone();
   };
+
+  const submit = async () => {
+    setError(null);
+    if (emailChanged && !confirming) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+        setError('Enter a valid email.');
+        return;
+      }
+      setConfirming(true);
+      return;
+    }
+    await run();
+  };
+
+  if (confirming) {
+    return (
+      <Dialog title="Confirm email change" submitLabel="Change email" onCancel={() => setConfirming(false)}
+        onSubmit={() => void submit()} busy={busy} error={error}>
+        <p>
+          Sign-in email changes from {member.email} to {nextEmail}. Passkeys and the group stay.
+          The old email is kept so old LMS links still match.
+        </p>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog title="Edit profile" submitLabel="Save" onCancel={onCancel} onSubmit={() => void submit()} busy={busy} error={error}>
       <div className="field">
         <label htmlFor="ep-email">Email</label>
-        <input id="ep-email" value={member.email} readOnly aria-describedby="ep-email-note" />
-        <small id="ep-email-note">Change via import.</small>
+        <input id="ep-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+          aria-describedby={member.previous_emails.length > 0 ? 'ep-email-prev' : undefined} />
+        {member.previous_emails.length > 0 ? (
+          <small id="ep-email-prev" className="muted">Previous emails: {member.previous_emails.join(', ')}</small>
+        ) : null}
       </div>
       <div className="field">
         <label htmlFor="ep-first">First name</label>
