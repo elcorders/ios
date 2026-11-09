@@ -11,6 +11,7 @@ import { MembersPage } from './MembersPage';
 import { SurveyPage } from './SurveyPage';
 import { GroupsPage } from './GroupsPage';
 import { LabAdminPage } from './LabAdminPage';
+import { LAB_ENABLED } from '../../lib/features';
 import { PendingPage } from './PendingPage';
 import { ContentPage } from './ContentPage';
 import { TransfersPage } from './TransfersPage';
@@ -126,7 +127,7 @@ function AdminArea() {
           <NavLink to="/admin/transfers">
             Transfers{openTransfers?.cohortId === cohort.id ? ` (${openTransfers.count})` : ''}
           </NavLink>
-          <NavLink to="/admin/lab">Lab</NavLink>
+          {LAB_ENABLED ? <NavLink to="/admin/lab">Lab</NavLink> : null}
           <NavLink to="/admin/content">Content</NavLink>
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
@@ -139,7 +140,7 @@ function AdminArea() {
           <Route path="survey" element={<SurveyPage />} />
           <Route path="groups" element={<GroupsPage />} />
           <Route path="transfers" element={<TransfersPage />} />
-          <Route path="lab/*" element={<LabAdminPage />} />
+          {LAB_ENABLED ? <Route path="lab/*" element={<LabAdminPage />} /> : null}
           <Route path="content" element={<ContentPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
