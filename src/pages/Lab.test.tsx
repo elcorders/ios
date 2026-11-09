@@ -170,3 +170,14 @@ describe('lab page: eligible student', () => {
     expect(await within(list).findByText(/Tue 10 Nov 09:00/)).toBeInTheDocument();
   });
 });
+
+describe('lab page: admin without a student enrolment', () => {
+  it('shows a read-only calendar preview (no booking)', async () => {
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    open();
+    expect(await screen.findByText(/Admin preview/)).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: 'Day' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Book/ })).toBeNull();
+  });
+});

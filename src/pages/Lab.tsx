@@ -5,6 +5,7 @@ import type { ApiError, BookWarning, Booking, IsoDate, IsoDateTime, LabCalendar,
 import { useAuth } from '../auth/AuthProvider';
 import { messageFor } from '../lib/errors';
 import { formatColombo } from '../lib/time';
+import { labVisible } from '../lib/features';
 import { Dialog } from './admin/Dialog';
 import './lab.css';
 
@@ -96,6 +97,16 @@ export function Lab() {
   const myStarts = new Set((lab?.bookings ?? []).filter((b) => b.status !== 'withdrawn').map((b) => Date.parse(b.slot_start)));
 
   if (!me) return null;
+  if (!labVisible(me)) {
+    return (
+      <section className="card stack">
+        <h1>Lab booking</h1>
+        <p>Lab booking is not open yet.</p>
+        <Link to="/">Back to Home</Link>
+      </section>
+    );
+  }
+  if ((!enrolment || !cohortId) && me.is_admin) return <AdminLabPreview />;
   if (!enrolment || !cohortId) {
     return (
       <section className="card stack">
@@ -369,6 +380,78 @@ export function Lab() {
             </select>
           </label>
         </Dialog>
+      ) : null}
+    </section>
+  );
+}
+
+/** Admin without a student enrolment: what students see, read-only (no booking — bookings belong to a student enrolment). */
+function AdminLabPreview() {
+  const [calendar, setCalendar] = useState<LabCalendar | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [day, setDay] = useState<IsoDate | null>(null);
+  const [now] = useState(() => Date.now());
+  useEffect(() => {
+    const today = colomboToday();
+    const end = new Date(Date.parse(`${today}T00:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10);
+    void api.getLabCalendar(today, end).then((res) => {
+      if (res.ok) setCalendar(res.data);
+      else setError(errorText(res.error));
+    });
+  }, []);
+  const days = calendar?.days ?? [];
+  const activeDay = day && days.some((d) => d.date === day) ? day : ((days.find((d) => d.open) ?? days[0])?.date ?? null);
+  const dayData = days.find((d) => d.date === activeDay) ?? null;
+  return (
+    <section className="stack-lg lab-page">
+      <div className="card stack">
+        <h1>Lab booking</h1>
+        <Link to="/">Back to Home</Link>
+        <p role="status" className="lab-reason">
+          Admin preview: this is the calendar students see. Booking needs a student account. Manage Macs, hours and closures in <Link to="/admin/lab">Admin › Lab</Link>.
+        </p>
+        {error ? <p role="alert" className="error">{error}</p> : null}
+        {calendar ? <p className="muted">{calendar.capacity} {calendar.capacity === 1 ? 'Mac' : 'Macs'} in service.</p> : null}
+      </div>
+      {calendar ? (
+        <div className="card stack">
+          <h2>Calendar</h2>
+          <div className="lab-days" role="group" aria-label="Day">
+            {days.map((d) => {
+              const sub = d.closure ? CLOSURE_LABEL[d.closure.kind] : d.open ? null : 'Closed';
+              return (
+                <button key={d.date} type="button" className={`lab-day${d.open ? '' : ' lab-day-closed'}`} aria-pressed={d.date === activeDay} onClick={() => setDay(d.date)}>
+                  <span>{fmtDay(d.date)}</span>
+                  {sub ? <small>{sub}</small> : null}
+                </button>
+              );
+            })}
+          </div>
+          {dayData && !dayData.open ? (
+            <p className="muted" role="status">
+              The lab is closed on {fmtDay(dayData.date)}
+              {dayData.closure?.reason ? `: ${dayData.closure.reason}` : dayData.closure ? `: ${CLOSURE_LABEL[dayData.closure.kind]}` : ''}.
+            </p>
+          ) : null}
+          {dayData && dayData.open ? (
+            <ul className="lab-slots" aria-label={`Slots on ${fmtDay(dayData.date)}`}>
+              {dayData.slots.map((s) => {
+                const past = Date.parse(s.start) <= now;
+                const left = Math.max(0, calendar.capacity - s.booked);
+                return (
+                  <li key={s.start}>
+                    <div className={`lab-slot${past || s.full ? ' lab-slot-off' : ''}`}>
+                      <span className="lab-slot-time">{fmtTime(s.start)} to {fmtTime(s.end)}</span>
+                      <span className={`lab-slot-status${s.full || past ? ' muted' : ''}`}>
+                        {past ? 'Past' : s.full ? 'Full' : `${left} of ${calendar.capacity} free`}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );

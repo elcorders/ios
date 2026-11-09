@@ -14,7 +14,6 @@ import { Tutorials } from './pages/Tutorials';
 import { ContentView } from './pages/ContentView';
 import { Transfer } from './pages/Transfer';
 import { Lab } from './pages/Lab';
-import { LAB_ENABLED } from './lib/features';
 import { Install } from './pages/Install';
 import { NotFound } from './pages/NotFound';
 
@@ -33,7 +32,7 @@ export const routes: RouteObject[] = [
       { path: 'resources', element: <RequireAuth><Resources /></RequireAuth> },
       { path: 'tutorials', element: <RequireAuth><Tutorials /></RequireAuth> },
       { path: 'transfer', element: <RequireAuth><Transfer /></RequireAuth> },
-      ...(LAB_ENABLED ? [{ path: 'lab', element: <RequireAuth><Lab /></RequireAuth> }] : []),
+      { path: 'lab', element: <RequireAuth><Lab /></RequireAuth> },
       { path: 'c/:id', element: <RequireAuth><ContentView /></RequireAuth> },
       { path: 'admin/*', element: <RequireAuth><AdminLayout /></RequireAuth> },
       { path: 'login', element: <Login /> },
