@@ -583,7 +583,7 @@ export interface MyLab {
   eligible: boolean;
   reason: LabIneligibleReason | null;
   cycle: { no: number; start: IsoDate; end: IsoDate };
-  credits: { allowance: number; used: number; remaining: number };
+  credits: { allowance: number; used: number; remaining: number; /** credits taken off for no-shows since the last attended booking (D53) */ penalty: number };
   week: { start: IsoDate; end: IsoDate; hours: number; cap: number };
   no_shows: number;
   suspended: boolean;

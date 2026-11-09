@@ -8,7 +8,7 @@ import { formatColombo } from '../lib/time';
 import { Dialog } from './admin/Dialog';
 import './lab.css';
 
-const MAX_PICK = 10;
+const MAX_PICK = 13;
 const COLOMBO_OFFSET_MS = 5.5 * 3600_000;
 const colomboToday = (): IsoDate => new Date(Date.now() + COLOMBO_OFFSET_MS).toISOString().slice(0, 10);
 
@@ -194,6 +194,11 @@ export function Lab() {
               <div><dt>This week</dt><dd>{lab.week.hours} of {lab.week.cap} hours</dd></div>
               <div><dt>Credit period</dt><dd>{fmtDate(lab.cycle.start)} to {fmtDate(lab.cycle.end)}</dd></div>
             </dl>
+            {lab.credits.penalty > 0 ? (
+              <p className="muted lab-penalty">
+                −{lab.credits.penalty} credits for {lab.no_shows} missed {lab.no_shows === 1 ? 'booking' : 'bookings'}. Attend your next booking to get them back.
+              </p>
+            ) : null}
             <p className="muted lab-pref">
               Preferred Mac: <strong>{lab.preferred_mac_no ? `Mac ${lab.preferred_mac_no}` : 'No preference'}</strong>{' '}
               <button type="button" className="inline" onClick={() => { setMacChoice(lab.preferred_mac_id ?? ''); setDialogError(null); setMacPrompt(true); }}>

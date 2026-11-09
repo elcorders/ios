@@ -16,11 +16,11 @@ test('admin Lab: paste a closure, take a Mac out of service, adjust credits', as
 
   await page.getByRole('link', { name: 'Closures' }).click();
   const date = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
-  await page.getByLabel('Dates').fill(`${date}, Exam day`);
+  await page.getByLabel('Dates (lab closures)').fill(`${date}, Exam day`);
   await expect(page.getByText('1 valid, 0 invalid.')).toBeVisible();
-  await page.getByRole('button', { name: /^Add 1 closures/ }).click();
+  await page.getByRole('button', { name: /^Add 1 lab closures/ }).click();
   await expect(page.getByText('Added 1, updated 0.')).toBeVisible();
-  await expect(page.getByRole('table', { name: 'Upcoming closures' }).getByText(date)).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Upcoming lab closures' }).getByText(date)).toBeVisible();
 
   await page.getByRole('link', { name: 'Credits' }).click();
   const table = page.getByRole('table', { name: /Lab credits/ });

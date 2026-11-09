@@ -22,7 +22,8 @@ const CYCLE_DAYS = 14;
 const NO_SHOW_PENALTY = 2;
 const SUSPEND_AFTER = 3;
 const HORIZON_DAYS = 14;
-const MAX_BOOK = 10;
+const MAX_BOOK = 13;
+const PENALTY_CAP_PCT = 75;
 
 // ───────────── time helpers ─────────────
 const OFFSET_MS = 5.5 * 3600_000;
@@ -67,7 +68,7 @@ let closures: Closure[] = [];
 let bookings: MockBooking[] = [];
 let adjustments: Adjustment[] = [];
 let prefs = new Map<string, string>();
-let cleared = new Map<string, number>();
+let cleared = new Map<string, number>(); // enrolment -> suspension_cleared_at (ms)
 let seq = 0;
 
 const pad = (n: number, w: number) => String(n).padStart(w, '0');
@@ -84,12 +85,15 @@ const fillerProfile = (enrolmentId: string) => {
 };
 
 const hoursFor = (weekday: number) => hours.find((h) => h.weekday === weekday);
-const closureOn = (d: IsoDate) => closures.find((c) => c.date === d);
-const isOpenDay = (d: IsoDate) => !!hoursFor(weekdayOf(d)) && !closureOn(d);
+const KIND_PRIORITY: ClosureKind[] = ['holiday', 'closed', 'class_day'];
+const closureOn = (d: IsoDate) =>
+  closures.filter((c) => c.date === d).sort((a, b) => KIND_PRIORITY.indexOf(a.kind) - KIND_PRIORITY.indexOf(b.kind))[0];
+const closesLab = (d: IsoDate) => closures.some((c) => c.date === d);
+const isOpenDay = (d: IsoDate) => !!hoursFor(weekdayOf(d)) && !closesLab(d);
 const hourNum = (t: string) => Number(t.slice(0, 2));
 const slotHours = (d: IsoDate): number[] => {
   const h = hoursFor(weekdayOf(d));
-  if (!h || closureOn(d)) return [];
+  if (!h || closesLab(d)) return [];
   return Array.from({ length: hourNum(h.close_time) - hourNum(h.open_time) }, (_, i) => hourNum(h.open_time) + i);
 };
 const capacity = () => macs.filter((m) => m.status === 'in_service').length;
@@ -171,23 +175,30 @@ const findStudentEnrolmentById = (id: string) =>
   [...mockActiveStudents(MOCK_COHORT.id), ...mockActiveStudents(MOCK_ARCHIVED_COHORT.id)].find((e) => e.id === id);
 
 // ───────────── credits ─────────────
-const noShows = (enrolmentId: string, k: number) =>
-  bookings.filter((b) => b.enrolment_id === enrolmentId && b.status === 'no_show' && cycleNoOf(dateOf(b.slot_ms)) === k).length;
+const streakNoShows = (enrolmentId: string): MockBooking[] => {
+  const own = bookings.filter((b) => b.enrolment_id === enrolmentId);
+  const attended = own.filter((b) => b.status === 'checked_in' || b.status === 'completed').map((b) => b.slot_ms);
+  const last = attended.length ? Math.max(...attended) : -Infinity;
+  return own.filter((b) => b.status === 'no_show' && b.slot_ms > last);
+};
+const noShows = (enrolmentId: string) => streakNoShows(enrolmentId).length;
+const penaltyOf = (enrolmentId: string) =>
+  Math.min(NO_SHOW_PENALTY * noShows(enrolmentId), Math.floor((CREDITS_PER_CYCLE * PENALTY_CAP_PCT) / 100));
 const allowanceOf = (enrolmentId: string, k: number) =>
-  Math.max(0, CREDITS_PER_CYCLE - NO_SHOW_PENALTY * noShows(enrolmentId, k - 1)) +
+  CREDITS_PER_CYCLE - penaltyOf(enrolmentId) +
   adjustments.filter((a) => a.enrolment_id === enrolmentId && a.cycle_no === k).reduce((s, a) => s + a.amount, 0);
 const usedOf = (enrolmentId: string, k: number) =>
   bookings.filter((b) => b.enrolment_id === enrolmentId && counted(b) && cycleNoOf(dateOf(b.slot_ms)) === k).length;
 const creditsOf = (enrolmentId: string, k: number) => {
   const allowance = allowanceOf(enrolmentId, k);
   const used = usedOf(enrolmentId, k);
-  return { allowance, used, remaining: allowance - used };
+  return { allowance, used, remaining: allowance - used, penalty: penaltyOf(enrolmentId) };
 };
 const weekHours = (enrolmentId: string, weekStart: IsoDate) =>
   bookings.filter((b) => b.enrolment_id === enrolmentId && counted(b) && weekStartOf(dateOf(b.slot_ms)) === weekStart).length;
 const isSuspended = (enrolmentId: string) => {
-  const k = cycleNoOf(today());
-  return noShows(enrolmentId, k) >= SUSPEND_AFTER && cleared.get(enrolmentId) !== k;
+  const after = cleared.get(enrolmentId) ?? -Infinity;
+  return streakNoShows(enrolmentId).filter((b) => b.slot_ms > after).length >= SUSPEND_AFTER;
 };
 
 function ineligibleReason(enrolmentId: string): MyLab['reason'] {
@@ -210,7 +221,7 @@ function buildMyLab(enrolmentId: string): MyLab {
     cycle: { no: k, start: cycleStartOf(k), end: cycleEndOf(k) },
     credits: creditsOf(enrolmentId, k),
     week: { start: ws, end: addDays(ws, 6), hours: weekHours(enrolmentId, ws), cap: WEEKLY_CAP },
-    no_shows: noShows(enrolmentId, k),
+    no_shows: noShows(enrolmentId),
     suspended: isSuspended(enrolmentId),
     preferred_mac_id: prefId,
     preferred_mac_no: macNo(prefId),
@@ -428,13 +439,13 @@ export const mockLab: S3Api = {
     if (!Array.isArray(items) || items.length < 1 || items.length > 366 || items.some((i) => !validDate(i.date) || !kinds.includes(i.kind))) {
       return fail('invalid_input');
     }
+    if (!u.profile.is_admin && items.some((i) => i.kind !== 'closed')) return fail('forbidden');
     let added = 0;
     let updated = 0;
     for (const i of items) {
       const reason = i.reason?.trim() || null;
-      const existing = closureOn(i.date);
+      const existing = closures.find((c) => c.date === i.date && c.kind === i.kind);
       if (existing) {
-        existing.kind = i.kind;
         existing.reason = reason;
         updated += 1;
       } else {
@@ -451,6 +462,7 @@ export const mockLab: S3Api = {
     if (!u.profile.is_admin && !isInstructor(u)) return fail('forbidden');
     const i = closures.findIndex((c) => c.id === id);
     if (i < 0) return fail('not_found');
+    if (!u.profile.is_admin && closures[i]?.kind !== 'closed') return fail('forbidden');
     closures.splice(i, 1);
     return ok({ ok: true as const });
   },
@@ -501,8 +513,10 @@ export const mockLab: S3Api = {
         last_name: p.last_name,
         group_no: mockGroupOf(e.id).group_no,
         eligible: mockGroupOf(e.id).has_mac === false && !suspended,
-        ...c,
-        no_shows: noShows(e.id, k),
+        allowance: c.allowance,
+        used: c.used,
+        remaining: c.remaining,
+        no_shows: noShows(e.id),
         suspended,
         upcoming: bookings.filter((b) => b.enrolment_id === e.id && b.status === 'booked' && b.slot_ms > nowMs()).length,
       };
@@ -521,7 +535,8 @@ export const mockLab: S3Api = {
     if (e.cohort_id === MOCK_ARCHIVED_COHORT.id) return fail('cohort_archived');
     const k = cycleNoOf(today());
     adjustments.push({ enrolment_id: e.id, cycle_no: k, amount, reason: reason.trim() });
-    return ok(creditsOf(e.id, k));
+    const { allowance, used, remaining } = creditsOf(e.id, k);
+    return ok({ allowance, used, remaining });
   },
 
   async adminClearSuspension(enrolmentId) {
@@ -531,7 +546,7 @@ export const mockLab: S3Api = {
     const e = findStudentEnrolmentById(enrolmentId);
     if (!e) return fail('not_found');
     if (!isSuspended(e.id)) return fail('conflict');
-    cleared.set(e.id, cycleNoOf(today()));
+    cleared.set(e.id, nowMs());
     return ok({ suspended: false as const });
   },
 };

@@ -67,18 +67,20 @@ describe('Admin > Lab', () => {
 
   it('pastes closures with a preview, then deletes one', async () => {
     await open('/admin/lab/closures');
-    const table = await screen.findByRole('table', { name: 'Upcoming closures' });
-    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    const table = await screen.findByRole('table', { name: 'Upcoming class days' });
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(within(await screen.findByRole('table', { name: 'Upcoming public holidays' })).getAllByRole('row')).toHaveLength(2);
+    expect(within(await screen.findByRole('table', { name: 'Upcoming lab closures' })).getByText('No upcoming lab closures.')).toBeInTheDocument();
     const d = addDaysIso(colomboToday(), 40);
-    fireEvent.change(screen.getByLabelText('Dates'), { target: { value: `${d}, Exam week\nbad line` } });
-    const preview = screen.getByRole('group', { name: 'Preview' });
+    fireEvent.change(screen.getByLabelText('Dates (lab closures)'), { target: { value: `${d}, Exam week\nbad line` } });
+    const preview = screen.getByRole('group', { name: 'Preview lab closures' });
     expect(within(preview).getByText('1 valid, 1 invalid.')).toBeInTheDocument();
     expect(within(preview).getByText(/Line 2 is not valid/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^Add 1 closures/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Add 1 lab closures/ }));
     expect(await screen.findByText('Added 1, updated 0.')).toBeInTheDocument();
-    expect(await within(await screen.findByRole('table', { name: 'Upcoming closures' })).findByText(d)).toBeInTheDocument();
+    expect(await within(await screen.findByRole('table', { name: 'Upcoming lab closures' })).findByText(d)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: `Delete closure ${d}` }));
+    fireEvent.click(screen.getByRole('button', { name: `Delete lab closure ${d}` }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
     expect(await screen.findByText('Closure deleted.')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(d)).toBeNull());
@@ -86,15 +88,15 @@ describe('Admin > Lab', () => {
 
   it('adds a single closure and toggles past closures', async () => {
     await open('/admin/lab/closures');
-    await screen.findByRole('table', { name: 'Upcoming closures' });
+    await screen.findByRole('table', { name: 'Upcoming public holidays' });
     const d = addDaysIso(colomboToday(), 60);
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: d } });
-    fireEvent.change(screen.getByLabelText('Kind'), { target: { value: 'holiday' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add closure' }));
+    fireEvent.change(screen.getByLabelText('Date (public holiday)'), { target: { value: d } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add public holiday' }));
     expect(await screen.findByText('Added 1, updated 0.')).toBeInTheDocument();
+    expect(within(await screen.findByRole('table', { name: 'Upcoming public holidays' })).getByText(d)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Show past closures'));
-    expect(await screen.findByRole('table', { name: 'Past closures' })).toBeInTheDocument();
-    expect(screen.getByText('No past closures.')).toBeInTheDocument();
+    expect(await screen.findByRole('table', { name: 'Past public holidays' })).toBeInTheDocument();
+    expect(screen.getByText('No past public holidays.')).toBeInTheDocument();
   });
 
   it('lists bookings grouped by slot with count / capacity', async () => {

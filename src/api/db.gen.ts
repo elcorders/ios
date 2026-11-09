@@ -397,7 +397,7 @@ export type Database = {
           preferred_mac_id: string | null
           role: Database["public"]["Enums"]["enrolment_role"]
           status: Database["public"]["Enums"]["enrolment_status"]
-          suspension_cleared_cycle: number | null
+          suspension_cleared_at: string | null
           updated_at: string
           user_id: string
         }
@@ -409,7 +409,7 @@ export type Database = {
           preferred_mac_id?: string | null
           role: Database["public"]["Enums"]["enrolment_role"]
           status?: Database["public"]["Enums"]["enrolment_status"]
-          suspension_cleared_cycle?: number | null
+          suspension_cleared_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -421,7 +421,7 @@ export type Database = {
           preferred_mac_id?: string | null
           role?: Database["public"]["Enums"]["enrolment_role"]
           status?: Database["public"]["Enums"]["enrolment_status"]
-          suspension_cleared_cycle?: number | null
+          suspension_cleared_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1174,6 +1174,10 @@ export type Database = {
         Args: { b: Database["public"]["Tables"]["bookings"]["Row"] }
         Returns: Json
       }
+      lab_can_edit_closure_kind: {
+        Args: { p_kind: Database["public"]["Enums"]["closure_kind"] }
+        Returns: boolean
+      }
       lab_can_edit_closures: { Args: never; Returns: boolean }
       lab_capacity: { Args: never; Returns: number }
       lab_cfg: {
@@ -1212,6 +1216,10 @@ export type Database = {
       }
       lab_day_ts: { Args: { p_date: string }; Returns: string }
       lab_is_suspended: { Args: { p_enrolment_id: string }; Returns: boolean }
+      lab_no_show_streak: {
+        Args: { p_enrolment_id: string; p_since?: string }
+        Returns: number
+      }
       lab_reason: { Args: { p_enrolment_id: string }; Returns: string }
       lab_slot_date: { Args: { p_ts: string }; Returns: string }
       lab_slot_open: { Args: { p_slot: string }; Returns: boolean }
@@ -1427,11 +1435,13 @@ export type Database = {
         penalty: number | null
         suspend: number | null
         horizon: number | null
+        pcap: number | null
       }
       lab_credit_t: {
         allowance: number | null
         used: number | null
         no_shows: number | null
+        penalty: number | null
       }
     }
   }

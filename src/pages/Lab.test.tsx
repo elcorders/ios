@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { routes } from '../routes';
 import { api } from '../api';
 import { resetMockAuth } from '../api/mock/auth';
+import { mockSetBookingStatus } from '../api/mock/lab';
 import { MOCK_COHORT } from '../api/mock/fixtures/s1';
 
 // Monday 2026-11-09 10:00 Colombo. Mock lab: Tue 10th has a full 10:00 slot; Thu 12th is a class day.
@@ -121,16 +122,27 @@ describe('lab page: eligible student', () => {
     expect(screen.getByText(/Tue 10 Nov 15:00/, { selector: '[role="alert"]' })).toBeInTheDocument();
   });
 
-  it('stops at 10 selected slots', async () => {
+  it('stops at 13 selected slots', async () => {
     open();
     fireEvent.click(await screen.findByRole('button', { name: /Wed 11 Nov/ }));
     for (const h of [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]) {
       fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(`${String(h).padStart(2, '0')}:00 to`) }));
     }
-    expect(screen.getByText('10 selected')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Thu 12 Nov/ }));
     fireEvent.click(screen.getByRole('button', { name: /Fri 13 Nov/ }));
+    for (const h of [9, 10, 11]) {
+      fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(`${String(h).padStart(2, '0')}:00 to`) }));
+    }
+    expect(screen.getByText('13 selected')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Tue 17 Nov/ }));
     for (const box of screen.getAllByRole('checkbox')) expect(box).toBeDisabled();
+  });
+
+  it('shows the credit penalty after missed bookings', async () => {
+    const r = await api.bookSlots(C, [slot('2026-11-10', 15), slot('2026-11-10', 16)]);
+    if (!r.ok) throw new Error(r.error.code);
+    r.data.bookings.forEach((b) => mockSetBookingStatus(b.id, 'no_show'));
+    open();
+    expect(await screen.findByText(/−4 credits for 2 missed bookings\. Attend your next booking to get them back\./)).toBeInTheDocument();
   });
 
   it('withdraws a future booking after confirming', async () => {

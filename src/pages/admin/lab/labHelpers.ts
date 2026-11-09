@@ -7,6 +7,12 @@ export const KIND_LABELS: Record<ClosureKind, string> = {
   class_day: 'Class day',
 };
 
+export const KIND_BLOCKS: { kind: ClosureKind; title: string; noun: string; single: string }[] = [
+  { kind: 'holiday', title: 'Public holidays', noun: 'public holidays', single: 'public holiday' },
+  { kind: 'class_day', title: 'Class calendar', noun: 'class days', single: 'class day' },
+  { kind: 'closed', title: 'NIBM / lab closures', noun: 'lab closures', single: 'lab closure' },
+];
+
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 /** Today's calendar date in Asia/Colombo. */

@@ -59,7 +59,7 @@ describe('mock lab eligibility and cycle', () => {
     const lab = await myLab();
     expect(lab).toMatchObject({ eligible: true, reason: null, horizon_end: '2026-11-23' });
     expect(lab.cycle).toEqual({ no: 1, start: '2026-11-07', end: '2026-11-20' });
-    expect(lab.credits).toEqual({ allowance: 20, used: 0, remaining: 20 });
+    expect(lab.credits).toEqual({ allowance: 20, used: 0, remaining: 20, penalty: 0 });
     expect(lab.week).toEqual({ start: '2026-11-07', end: '2026-11-13', hours: 0, cap: 10 });
     expect(lab.macs).toHaveLength(12);
     await signIn(4); // no survey answer
@@ -93,7 +93,7 @@ describe('mock lab booking', () => {
     expect(r.data.bookings).toHaveLength(2);
     expect(r.data.warnings).toEqual([]);
     const lab = await myLab();
-    expect(lab.credits).toEqual({ allowance: 20, used: 2, remaining: 18 });
+    expect(lab.credits).toEqual({ allowance: 20, used: 2, remaining: 18, penalty: 0 });
     expect(lab.week.hours).toBe(2);
     expect(lab.needs_preferred_mac).toBe(true);
     const cal = await api.getLabCalendar('2026-11-10', '2026-11-10');
@@ -128,11 +128,19 @@ describe('mock lab booking', () => {
 
   it('enforces the weekly cap of 10 hours (Sat-Fri weeks)', async () => {
     const ten = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((h) => slot('2026-11-11', h)); // Wed
+    const eleven = [...ten.map((s) => s.replace('11-11', '11-17')), slot('2026-11-18', 9)];
+    expect(code(await api.bookSlots(C, eleven))).toBe('weekly_cap'); // 11 in one week, all or nothing
     expect(code(await api.bookSlots(C, ten))).toBe('ok');
     expect(code(await api.bookSlots(C, [slot('2026-11-13', 9)]))).toBe('weekly_cap'); // Fri, same week
     expect(code(await api.bookSlots(C, [slot('2026-11-16', 9)]))).toBe('ok'); // next week
-    const eleven = [...ten.map((s) => s.replace('11-11', '11-17')), slot('2026-11-18', 9)];
-    expect(code(await api.bookSlots(C, eleven))).toBe('invalid_input'); // over 10 per call
+  });
+
+  it('allows up to 13 slots per request and rejects 14', async () => {
+    const fourteen = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((h) => slot('2026-11-16', h));
+    fourteen.push(slot('2026-11-17', 9), slot('2026-11-17', 10), slot('2026-11-17', 11), slot('2026-11-17', 12));
+    expect(code(await api.bookSlots(C, fourteen))).toBe('invalid_input');
+    expect(code(await api.bookSlots(C, fourteen.slice(0, 13)))).toBe('weekly_cap'); // 13 accepted by the count rule; 10 h cap trips
+    expect(code(await api.bookSlots(C, [...fourteen.slice(0, 7), ...fourteen.slice(10, 13)]))).toBe('ok');
   });
 
   it('runs out of credits (20 per cycle) and returns them on withdraw', async () => {
@@ -180,12 +188,31 @@ describe('mock lab booking', () => {
     ids.forEach((id) => mockSetBookingStatus(id, 'no_show'));
     expect(await myLab()).toMatchObject({ eligible: false, reason: 'suspended', no_shows: 3, suspended: true });
     expect(code(await api.bookSlots(C, [slot('2026-11-11', 9)]))).toBe('suspended');
+    expect((await myLab()).credits.penalty).toBe(6);
     const enrolmentId = `enrol-00000000-0000-4000-8000-000000000105`;
+    vi.setSystemTime(new Date('2026-11-11T08:00:00+05:30')); // after the missed slots
     await api.verifyEmailCode('admin@example.edu', '123456');
     expect(code(await api.adminClearSuspension(enrolmentId))).toBe('ok');
     expect(code(await api.adminClearSuspension(enrolmentId))).toBe('conflict');
     await signIn(5);
-    expect((await myLab()).eligible).toBe(true);
+    const after = await myLab();
+    expect(after.eligible).toBe(true);
+    expect(after.credits.penalty).toBe(6); // clearing does not remove the penalty
+  });
+
+  it('caps the penalty at 75 percent and resets it when a later booking is attended', async () => {
+    const ids: string[] = [];
+    for (const h of [9, 10, 11, 12, 13, 14, 15, 16, 17]) {
+      const r = await api.bookSlots(C, [slot('2026-11-11', h)]);
+      ids.push(r.ok ? r.data.bookings[0]!.id : '');
+    }
+    ids.slice(0, 8).forEach((id) => mockSetBookingStatus(id, 'no_show'));
+    mockSetBookingStatus(ids[8]!, 'completed');
+    expect(await myLab()).toMatchObject({ no_shows: 0, credits: { penalty: 0 } });
+    mockSetBookingStatus(ids[8]!, 'booked');
+    const lab = await myLab();
+    expect(lab.no_shows).toBe(8);
+    expect(lab.credits).toMatchObject({ penalty: 15, allowance: 5 }); // 8 x 2 = 16, capped at floor(20 x 75 / 100)
   });
 });
 
@@ -256,23 +283,31 @@ describe('mock lab admin', () => {
     expect(cal.ok && cal.data.days.map((d) => [d.date, d.slots.length])).toEqual([['2026-11-15', 2], ['2026-11-16', 0]]);
   });
 
-  it('adds, updates and deletes closures (admin and instructor)', async () => {
+  it('keeps closures unique per date and kind; instructors only manage closed days', async () => {
     await api.verifyEmailCode('instructor001@example.edu', '123456');
+    expect(code(await api.adminAddClosures([{ date: '2026-11-12', kind: 'holiday', reason: null }]))).toBe('forbidden');
     const add = await api.adminAddClosures([
       { date: '2026-11-10', kind: 'closed', reason: 'Fictional closure' },
-      { date: '2026-11-12', kind: 'holiday', reason: null },
+      { date: '2026-11-10', kind: 'closed', reason: 'Updated reason' },
     ]);
     expect(add).toEqual({ ok: true, data: { added: 1, updated: 1 } });
     expect(code(await api.adminAddClosures([{ date: 'bad', kind: 'closed', reason: null }]))).toBe('invalid_input');
     const list = await api.listClosures('2026-11-09', '2026-11-30');
     if (!list.ok) throw new Error();
-    expect(list.data.find((c) => c.date === '2026-11-12')).toMatchObject({ kind: 'holiday', reason: null });
     const tue = list.data.find((c) => c.date === '2026-11-10')!;
+    expect(tue.reason).toBe('Updated reason');
+    const classDay = list.data.find((c) => c.date === '2026-11-12')!;
+    expect(code(await api.adminDeleteClosure(classDay.id))).toBe('forbidden');
     await signIn(5);
     expect(code(await api.bookSlots(C, [slot('2026-11-10', 15)]))).toBe('slot_closed');
     await api.verifyEmailCode('instructor001@example.edu', '123456');
     expect(code(await api.adminDeleteClosure(tue.id))).toBe('ok');
     expect(code(await api.adminDeleteClosure(tue.id))).toBe('not_found');
+
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    expect(await api.adminAddClosures([{ date: '2026-11-12', kind: 'holiday', reason: 'Both' }])).toEqual({ ok: true, data: { added: 1, updated: 0 } });
+    const both = await api.listClosures('2026-11-12', '2026-11-12');
+    expect(both.ok && both.data.map((c) => c.kind).sort()).toEqual(['class_day', 'holiday']);
     await signIn(5);
     expect(code(await api.adminAddClosures([{ date: '2026-11-20', kind: 'closed', reason: null }]))).toBe('forbidden');
   });

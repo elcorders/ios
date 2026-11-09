@@ -50,17 +50,17 @@ test('admin Lab on ios-dev: closure paste + delete, Mac out of service, bookings
   // Closures: paste one far-off date, check DB + audit, delete it in the UI.
   const date = colomboDate(25);
   await page.getByRole('link', { name: 'Closures' }).click();
-  await page.getByLabel('Dates').fill(`${date}, E2E closure`);
+  await page.getByLabel('Dates (class days)').fill(`${date}, E2E closure`);
   await expect(page.getByText('1 valid, 0 invalid.')).toBeVisible();
-  await page.getByRole('button', { name: /^Add 1 closures/ }).click();
+  await page.getByRole('button', { name: /^Add 1 class days/ }).click();
   await expect(page.getByText('Added 1, updated 0.')).toBeVisible();
   const { data: cl } = await sb.from('lab_closures').select('id, kind, reason').eq('date', date).single();
   expect(cl).toMatchObject({ kind: 'class_day', reason: 'E2E closure' });
   const studentCal = await asStudent.rpc('get_lab_calendar', { p_from: date, p_to: date });
   expect((studentCal.data as { days: { open: boolean }[] }).days[0]!.open).toBe(false);
-  await page.getByRole('button', { name: `Delete closure ${date}` }).click();
+  await page.getByRole('button', { name: `Delete class day ${date}` }).click();
   await page.getByRole('dialog', { name: 'Delete closure' }).getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByRole('button', { name: `Delete closure ${date}` })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: `Delete class day ${date}` })).toHaveCount(0);
   const { data: gone } = await sb.from('lab_closures').select('id').eq('date', date);
   expect(gone).toEqual([]);
 
