@@ -12,7 +12,7 @@ function meWith(setup: boolean, surveyDone: boolean, isAdmin = false): Me {
     profile: {} as Me['profile'], is_admin: isAdmin,
     enrolments: [{
       enrolment_id: 'e1', cohort_id: 'c1', cohort_code: '25.2', cohort_status: 'active', role: 'student',
-      status: 'active', whatsapp_link: null, survey_done: surveyDone, group_no: null, group_name: null,
+      status: 'active', whatsapp_link: null, lab_open: false, survey_done: surveyDone, group_no: null, group_name: null,
     }],
     security: { passkeys: setup ? 1 : 0, totp: false, setup_complete: setup },
   };

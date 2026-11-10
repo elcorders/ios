@@ -1,6 +1,6 @@
 import type { ApiError, Me, Result, S1Api } from '../types';
 import { MOCK_CODE, MOCK_COHORT, MOCK_COURSE_KEY, MOCK_USERS, type MockUser } from './fixtures/s1';
-import { getMockCohortWhatsApp, resetMockCohortState } from './cohortState';
+import { getMockCohortWhatsApp, getMockLabOpen, resetMockCohortState } from './cohortState';
 import { resetMockSurvey, surveyInfoFor } from './survey';
 import { resetMockTransfers } from './transfers';
 import { resetMockLab } from './lab';
@@ -56,6 +56,7 @@ function toMe(u: MockUser): Me {
           cohort_status: MOCK_COHORT.status,
           role: u.role,
           status: 'active',
+          lab_open: getMockLabOpen(MOCK_COHORT.id, MOCK_COHORT.settings.lab_open === true),
           whatsapp_link: getMockCohortWhatsApp(MOCK_COHORT.id) ?? MOCK_COHORT.settings.whatsapp_link,
           ...surveyInfoFor(`enrol-${u.profile.id}`, u.role),
         }]

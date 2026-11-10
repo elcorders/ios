@@ -20,6 +20,7 @@ type Pending =
   | { kind: 'swap'; pair: SwapPair };
 
 const fullName = (r: AdminTransferRow) => `${r.first_name} ${r.last_name}`.trim() || r.email;
+const withIndex = (r: AdminTransferRow) => (r.index_no ? `${fullName(r)} (${r.index_no})` : fullName(r));
 const macLabel = (v: boolean | null) => (v === true ? 'Has Mac' : v === false ? 'No Mac' : 'Mac unknown');
 const isStale = (r: AdminTransferRow) => r.enrolment_status !== 'active' || r.current_no !== r.from_no;
 
@@ -169,8 +170,8 @@ export function TransfersPage() {
             {pairs.map((p) => (
               <article key={`${p.a.id}-${p.b.id}`} className="tr-card" aria-label={`Swap ${fullName(p.a)} and ${fullName(p.b)}`}>
                 <h4>{fullName(p.a)} ⇄ {fullName(p.b)}</h4>
-                <p className="tr-swap-line">A: {fullName(p.a)}, Group {p.a.from_no} → {p.b.from_no}</p>
-                <p className="tr-swap-line">B: {fullName(p.b)}, Group {p.b.from_no} → {p.a.from_no}</p>
+                <p className="tr-swap-line">A: {withIndex(p.a)}, Group {p.a.from_no} → {p.b.from_no}</p>
+                <p className="tr-swap-line">B: {withIndex(p.b)}, Group {p.b.from_no} → {p.a.from_no}</p>
                 <p className="tr-note">Sizes unchanged</p>
                 <div className="tr-actions">
                   <button type="button" disabled={readOnly} onClick={() => setPending({ kind: 'swap', pair: p })}>Approve both</button>
@@ -341,8 +342,8 @@ function DecisionDialog({ pending, groups, onCancel, onRun }: {
     label = 'Approve both';
     body = (
       <>
-        <p>{fullName(a)}: Group {a.from_no} → {b.from_no}</p>
-        <p>{fullName(b)}: Group {b.from_no} → {a.from_no}</p>
+        <p>{withIndex(a)}: Group {a.from_no} → {b.from_no}</p>
+        <p>{withIndex(b)}: Group {b.from_no} → {a.from_no}</p>
         <p className="tr-note">Group sizes stay the same. Both students will be emailed.</p>
       </>
     );

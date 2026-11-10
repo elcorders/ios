@@ -27,6 +27,17 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('lab page: closed', () => {
+  it('tells a student the lab is not open yet', async () => {
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    await api.adminUpdateCohortSettings(C, { lab_open: false });
+    await signIn(5);
+    open();
+    expect(await screen.findByText('Lab booking is not open yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Pick your times' })).toBeNull();
+  });
+});
+
 describe('lab page: not eligible', () => {
   it('explains has_mac and still lists and withdraws an earlier booking', async () => {
     await signIn(1);

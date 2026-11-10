@@ -38,6 +38,8 @@ export interface CohortSettings {
   group_count?: number;
   /** S8: students may send transfer requests (absent → false). */
   transfers_open?: boolean;
+  /** S12: students of this cohort may use lab booking (absent → false). */
+  lab_open?: boolean;
 }
 
 export interface Cohort {
@@ -87,6 +89,8 @@ export interface MyEnrolment {
   survey_done: boolean;
   group_no: number | null;
   group_name: string | null;
+  /** S12: the cohort's lab booking switch (`settings.lab_open`). */
+  lab_open: boolean;
 }
 
 export interface Me {
@@ -577,7 +581,7 @@ export interface Booking {
   created_at: IsoDateTime;
 }
 
-export type LabIneligibleReason = 'has_mac' | 'no_survey' | 'suspended' | 'not_student';
+export type LabIneligibleReason = 'has_mac' | 'no_survey' | 'suspended' | 'not_student' | 'lab_closed';
 
 export interface MyLab {
   eligible: boolean;

@@ -7,7 +7,7 @@ export const MOCK_COHORT: Cohort = {
   batch: 'BSCCOMP25.2P',
   lms_course_id: '12345',
   status: 'active',
-  settings: { whatsapp_link: null },
+  settings: { whatsapp_link: null, lab_open: true },
   created_at: '2026-01-05T09:00:00+05:30',
 };
 export const MOCK_COURSE_KEY = 'dev-key-25-2';

@@ -22,7 +22,19 @@ export function getMockTransfersOpen(cohortId: string, fallback: boolean): boole
   return transfersOpen.get(cohortId) ?? fallback;
 }
 
+/** S12: lab_open per cohort. Mock default is true for the active cohort (dev/test convenience). */
+const labOpen = new Map<string, boolean>();
+
+export function setMockLabOpen(cohortId: string, open: boolean): void {
+  labOpen.set(cohortId, open);
+}
+
+export function getMockLabOpen(cohortId: string, fallback: boolean): boolean {
+  return labOpen.get(cohortId) ?? fallback;
+}
+
 export function resetMockCohortState(): void {
   whatsapp.clear();
   transfersOpen.clear();
+  labOpen.clear();
 }

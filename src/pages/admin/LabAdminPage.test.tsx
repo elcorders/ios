@@ -29,6 +29,19 @@ describe('parseClosureLines', () => {
   });
 });
 
+describe('Admin > Lab switch', () => {
+  it('toggles lab booking for the cohort', async () => {
+    await open('/admin/lab');
+    const sw = await screen.findByRole('switch', { name: /Lab booking for .*: Open/ });
+    expect(sw).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(sw);
+    const closed = await screen.findByRole('switch', { name: /Lab booking for .*: Closed/ });
+    expect(closed).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(closed);
+    expect(await screen.findByRole('switch', { name: /: Open/ })).toBeInTheDocument();
+  });
+});
+
 describe('Admin > Lab', () => {
   it('redirects to Macs, edits a Mac and toggles service', async () => {
     await open('/admin/lab');

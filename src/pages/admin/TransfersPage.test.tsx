@@ -46,8 +46,10 @@ describe('TransfersPage', () => {
     open('/admin/transfers');
     const pair = await screen.findByRole('article', { name: /^Swap / });
     expect(within(pair).getByText('Sizes unchanged')).toBeInTheDocument();
+    expect(within(pair).getAllByText(/\(COBSCCOMP251P-0\d\d\)/)).toHaveLength(2);
     fireEvent.click(within(pair).getByRole('button', { name: 'Approve both' }));
     const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getAllByText(/\(COBSCCOMP251P-0\d\d\)/)).toHaveLength(2);
     fireEvent.change(within(dialog).getByLabelText(/Note/), { target: { value: 'Swapped.' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Approve both' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());

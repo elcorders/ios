@@ -5,7 +5,6 @@ import type { ApiError, BookWarning, Booking, IsoDate, IsoDateTime, LabCalendar,
 import { useAuth } from '../auth/AuthProvider';
 import { messageFor } from '../lib/errors';
 import { formatColombo } from '../lib/time';
-import { labVisible } from '../lib/features';
 import { Dialog } from './admin/Dialog';
 import './lab.css';
 
@@ -40,6 +39,7 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
 const REASON_TEXT: Record<string, string> = {
   has_mac: 'Lab booking is for students who do not have a Mac of their own. Your survey answer says you have one.',
   no_survey: 'Answer the quick Mac question on Home first, then lab booking opens up.',
+  lab_closed: 'Lab booking is not open yet.',
   suspended: 'Your lab booking is paused after missed sessions. Ask an instructor to clear it.',
   not_student: 'Lab booking is for students only.',
 };
@@ -97,15 +97,6 @@ export function Lab() {
   const myStarts = new Set((lab?.bookings ?? []).filter((b) => b.status !== 'withdrawn').map((b) => Date.parse(b.slot_start)));
 
   if (!me) return null;
-  if (!labVisible(me)) {
-    return (
-      <section className="card stack">
-        <h1>Lab booking</h1>
-        <p>Lab booking is not open yet.</p>
-        <Link to="/">Back to Home</Link>
-      </section>
-    );
-  }
   if ((!enrolment || !cohortId) && me.is_admin) return <AdminLabPreview />;
   if (!enrolment || !cohortId) {
     return (

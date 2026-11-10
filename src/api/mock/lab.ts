@@ -3,6 +3,7 @@ import type {
   LabCreditRow, LabDay, LabHours, Mac, MyLab, Result, S3Api,
 } from '../types';
 import { getMockCurrentEmail } from './auth';
+import { getMockLabOpen } from './cohortState';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS, type MockUser } from './fixtures/s1';
 import { mockActiveStudents, mockGroupOf } from './survey';
 
@@ -201,7 +202,11 @@ const isSuspended = (enrolmentId: string) => {
   return streakNoShows(enrolmentId).filter((b) => b.slot_ms > after).length >= SUSPEND_AFTER;
 };
 
+const labOpenFor = (cohortId: string) => getMockLabOpen(cohortId, cohortId === MOCK_COHORT.id);
+const cohortOfEnrolment = (enrolmentId: string) => findStudentEnrolmentById(enrolmentId)?.cohort_id ?? MOCK_COHORT.id;
+
 function ineligibleReason(enrolmentId: string): MyLab['reason'] {
+  if (!labOpenFor(cohortOfEnrolment(enrolmentId))) return 'lab_closed';
   const a = mockGroupOf(enrolmentId).has_mac;
   if (a === null) return 'no_survey';
   if (a) return 'has_mac';
@@ -298,6 +303,7 @@ export const mockLab: S3Api = {
       return fail('invalid_input');
     }
     const reason = ineligibleReason(e.id);
+    if (reason === 'lab_closed') return fail('lab_closed');
     if (reason === 'suspended') return fail('suspended');
     if (reason) return fail('not_eligible');
 
@@ -512,7 +518,7 @@ export const mockLab: S3Api = {
         first_name: p.first_name,
         last_name: p.last_name,
         group_no: mockGroupOf(e.id).group_no,
-        eligible: mockGroupOf(e.id).has_mac === false && !suspended,
+        eligible: labOpenFor(cohortId) && mockGroupOf(e.id).has_mac === false && !suspended,
         allowance: c.allowance,
         used: c.used,
         remaining: c.remaining,

@@ -337,3 +337,51 @@ describe('mock lab admin', () => {
     mockSetGroup(s5.enrolment_id, 2);
   });
 });
+
+describe('mock lab switch (lab_open)', () => {
+  const setOpen = async (open: boolean) => {
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    return api.adminUpdateCohortSettings(C, { lab_open: open });
+  };
+
+  it('is open by default and carried on getMe', async () => {
+    await signIn(5);
+    const me = await api.getMe();
+    expect(me.ok && me.data.enrolments[0]?.lab_open).toBe(true);
+  });
+
+  it('rejects a non-boolean value', async () => {
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    const r = await api.adminUpdateCohortSettings(C, { lab_open: 'yes' as unknown as boolean });
+    expect(code(r)).toBe('invalid_input');
+  });
+
+  it('closed: reason lab_closed wins over survey reasons, booking refused, credits not eligible', async () => {
+    expect((await setOpen(false)).ok).toBe(true);
+    for (const n of [1, 4, 5]) {
+      await signIn(n);
+      expect(await myLab()).toMatchObject({ eligible: false, reason: 'lab_closed' });
+      expect(code(await api.bookSlots(C, [slot('2026-11-10', 15)]))).toBe('lab_closed');
+    }
+    const me = await api.getMe();
+    expect(me.ok && me.data.enrolments[0]?.lab_open).toBe(false);
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    const credits = await api.adminLabCredits(C);
+    expect(credits.ok && credits.data.every((r) => !r.eligible)).toBe(true);
+  });
+
+  it('closed: an earlier booking can still be withdrawn', async () => {
+    await setOpen(false);
+    await signIn(1);
+    const lab = await myLab();
+    const w = await api.withdrawBooking(lab.bookings[0]!.id);
+    expect(w.ok).toBe(true);
+  });
+
+  it('reopens', async () => {
+    await setOpen(false);
+    await setOpen(true);
+    await signIn(5);
+    expect(await myLab()).toMatchObject({ eligible: true, reason: null });
+  });
+});

@@ -1,7 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { WhatsAppCard } from '../components/WhatsAppCard';
 import { useAuth } from '../auth/AuthProvider';
-import { labVisible } from '../lib/features';
 
 export function Home() {
   const { me, signOut } = useAuth();
@@ -42,7 +41,7 @@ export function Home() {
           <span className="content-card-title">Tutorials</span>
           <span className="muted">Step-by-step tutorials</span>
         </Link>
-        {labVisible(me) && (me.is_admin || me.enrolments.some((e) => e.role === 'student')) ? (
+        {me.is_admin || me.enrolments.some((e) => e.role === 'student' && e.status === 'active' && e.lab_open) ? (
           <Link to="/lab" className="card content-card">
             <span className="content-card-title">Lab booking</span>
             <span className="muted">Book a lab Mac</span>
