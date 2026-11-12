@@ -336,43 +336,49 @@ export type Database = {
       }
       content_items: {
         Row: {
-          body_html: string
+          body_html: string | null
           cohort_id: string | null
           created_at: string
           created_by: string | null
           id: string
           kind: Database["public"]["Enums"]["content_kind"]
+          library_id: string | null
           position: number
           published_at: string | null
           summary: string | null
           title: string
           updated_at: string
+          version_id: string | null
         }
         Insert: {
-          body_html: string
+          body_html?: string | null
           cohort_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           kind: Database["public"]["Enums"]["content_kind"]
+          library_id?: string | null
           position?: number
           published_at?: string | null
           summary?: string | null
           title: string
           updated_at?: string
+          version_id?: string | null
         }
         Update: {
-          body_html?: string
+          body_html?: string | null
           cohort_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["content_kind"]
+          library_id?: string | null
           position?: number
           published_at?: string | null
           summary?: string | null
           title?: string
           updated_at?: string
+          version_id?: string | null
         }
         Relationships: [
           {
@@ -387,6 +393,103 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "content_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_version_fk"
+            columns: ["version_id", "library_id"]
+            isOneToOne: false
+            referencedRelation: "content_versions"
+            referencedColumns: ["id", "library_id"]
+          },
+        ]
+      }
+      content_library: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["content_kind"]
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["content_kind"]
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["content_kind"]
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_library_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_versions: {
+        Row: {
+          body_html: string
+          created_at: string
+          created_by: string | null
+          id: string
+          library_id: string
+          note: string | null
+          version_no: number
+        }
+        Insert: {
+          body_html: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          library_id: string
+          note?: string | null
+          version_no: number
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          library_id?: string
+          note?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_versions_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "content_library"
             referencedColumns: ["id"]
           },
         ]
@@ -1181,6 +1284,10 @@ export type Database = {
         Returns: Json
       }
       admin_add_closures: { Args: { p_items: Json }; Returns: Json }
+      admin_add_library_version: {
+        Args: { p_body_html: string; p_id: string; p_note?: string }
+        Returns: Json
+      }
       admin_adjust_credits: {
         Args: { p_amount: number; p_enrolment_id: string; p_reason: string }
         Returns: Json
@@ -1212,8 +1319,19 @@ export type Database = {
         Returns: Json
       }
       admin_delete_content: { Args: { p_id: string }; Returns: Json }
+      admin_delete_library: { Args: { p_id: string }; Returns: Json }
       admin_get_content: { Args: { p_id: string }; Returns: Json }
+      admin_get_library: { Args: { p_id: string }; Returns: Json }
       admin_lab_credits: { Args: { p_cohort_id: string }; Returns: Json[] }
+      admin_link_library: {
+        Args: {
+          p_cohort_id: string
+          p_id: string
+          p_position?: number
+          p_version_id?: string
+        }
+        Returns: Json
+      }
       admin_list_class_sessions: {
         Args: { p_cohort_id: string }
         Returns: Json
@@ -1229,6 +1347,10 @@ export type Database = {
       admin_list_lab_bookings: {
         Args: { p_from: string; p_to: string }
         Returns: Json[]
+      }
+      admin_list_library: {
+        Args: { p_kind: Database["public"]["Enums"]["content_kind"] }
+        Returns: Json
       }
       admin_list_members: {
         Args: {
@@ -1262,6 +1384,10 @@ export type Database = {
         Returns: Json
       }
       admin_set_lab_hours: { Args: { p_hours: Json }; Returns: Json[] }
+      admin_set_link_versions: {
+        Args: { p_content_ids: string[]; p_version_id: string }
+        Returns: Json
+      }
       admin_set_pending_status: {
         Args: {
           p_pending_id: string
@@ -1324,6 +1450,10 @@ export type Database = {
           p_summary: string
           p_title: string
         }
+        Returns: Json
+      }
+      admin_upsert_library: {
+        Args: { p_id: string; p_summary: string; p_title: string }
         Returns: Json
       }
       admin_upsert_mac: {
@@ -1430,6 +1560,10 @@ export type Database = {
       content_audit_json: {
         Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
         Returns: Json
+      }
+      content_body: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: string
       }
       content_status: {
         Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
@@ -1551,6 +1685,18 @@ export type Database = {
           p_date: string
         }
         Returns: string
+      }
+      library_detail_json: {
+        Args: { p_lib: Database["public"]["Tables"]["content_library"]["Row"] }
+        Returns: Json
+      }
+      library_item_json: {
+        Args: { p_lib: Database["public"]["Tables"]["content_library"]["Row"] }
+        Returns: Json
+      }
+      library_link_json: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: Json
       }
       list_content: {
         Args: { p_kind: Database["public"]["Enums"]["content_kind"] }
