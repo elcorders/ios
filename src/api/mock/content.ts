@@ -77,6 +77,7 @@ function visible(i: MockItem): boolean {
 const adminRow = (i: MockItem): AdminContentRow => ({
   id: i.id, kind: i.kind, cohort_id: i.cohort_id, title: i.title, summary: i.summary, position: i.position,
   published_at: i.published_at, status: statusOf(i), size_bytes: sizeOf(i.body_html), updated_at: i.updated_at,
+  linked_sessions: 0, release_at: null,
 });
 
 const order = (a: MockItem, b: MockItem) =>

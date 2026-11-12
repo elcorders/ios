@@ -13,6 +13,8 @@ import { GroupsPage } from './GroupsPage';
 import { LabAdminPage } from './LabAdminPage';
 import { PendingPage } from './PendingPage';
 import { ContentPage } from './ContentPage';
+import { ClassesPage } from './ClassesPage';
+import { NotificationsPage } from './NotificationsPage';
 import { TransfersPage } from './TransfersPage';
 import { onOpenCount } from './transfers/openCount';
 
@@ -128,6 +130,8 @@ function AdminArea() {
           </NavLink>
           <NavLink to="/admin/lab">Lab</NavLink>
           <NavLink to="/admin/content">Content</NavLink>
+          <NavLink to="/admin/classes">Classes</NavLink>
+          <NavLink to="/admin/notifications">Notifications</NavLink>
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
         <Routes>
@@ -141,6 +145,8 @@ function AdminArea() {
           <Route path="transfers" element={<TransfersPage />} />
           <Route path="lab/*" element={<LabAdminPage />} />
           <Route path="content" element={<ContentPage />} />
+          <Route path="classes" element={<ClassesPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>

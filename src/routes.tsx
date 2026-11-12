@@ -11,6 +11,7 @@ import { AdminLayout } from './pages/admin/AdminLayout';
 import { LmsLanding } from './pages/LmsLanding';
 import { Resources } from './pages/Resources';
 import { Tutorials } from './pages/Tutorials';
+import { Materials } from './pages/Materials';
 import { ContentView } from './pages/ContentView';
 import { Transfer } from './pages/Transfer';
 import { Lab } from './pages/Lab';
@@ -31,6 +32,7 @@ export const routes: RouteObject[] = [
       { path: 'survey', element: <RequireAuth><Survey /></RequireAuth> },
       { path: 'resources', element: <RequireAuth><Resources /></RequireAuth> },
       { path: 'tutorials', element: <RequireAuth><Tutorials /></RequireAuth> },
+      { path: 'materials', element: <RequireAuth><Materials /></RequireAuth> },
       { path: 'transfer', element: <RequireAuth><Transfer /></RequireAuth> },
       { path: 'lab', element: <RequireAuth><Lab /></RequireAuth> },
       { path: 'c/:id', element: <RequireAuth><ContentView /></RequireAuth> },

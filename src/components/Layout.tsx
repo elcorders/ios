@@ -19,6 +19,7 @@ export function Layout() {
             {me ? <NavLink to="/" end>Home</NavLink> : null}
             {me ? <NavLink to="/resources">Resources</NavLink> : null}
             {me ? <NavLink to="/tutorials">Tutorials</NavLink> : null}
+            {me ? <NavLink to="/materials">Materials</NavLink> : null}
             {me?.is_admin ? <NavLink to="/admin">Admin</NavLink> : null}
             <ThemeToggle />
           </nav>

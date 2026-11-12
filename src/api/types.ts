@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -297,8 +297,9 @@ export interface S2Api {
 
 // ───────────────────────── S6 — Content: resources + tutorials (CONTRACT.md §S6) ─────────────────────────
 
-export type ContentKind = 'resource' | 'tutorial';
-export type ContentStatus = 'draft' | 'scheduled' | 'published';
+export type ContentKind = 'resource' | 'tutorial' | 'material';
+/** `on_session`: released per group by linked class sessions, not visible to everyone yet (§S14). */
+export type ContentStatus = 'draft' | 'scheduled' | 'published' | 'on_session';
 
 /** list_content row (visible items only, no body). */
 export interface ContentSummary {
@@ -334,6 +335,10 @@ export interface AdminContentRow {
   status: ContentStatus;
   size_bytes: number;
   updated_at: IsoDateTime;
+  /** §S14: number of class sessions linking this item. */
+  linked_sessions: number;
+  /** §S14: earliest linked session start still in the future, else null. */
+  release_at: IsoDateTime | null;
 }
 
 export interface AdminContentItem extends Omit<ContentItem, 'published_at'> {
@@ -542,6 +547,8 @@ export interface Closure {
   date: IsoDate;
   kind: ClosureKind;
   reason: string | null;
+  /** §S13: rows added by one range share this id. */
+  range_id: Uuid | null;
   created_by: Uuid | null;
   created_at: IsoDateTime;
 }
@@ -552,11 +559,19 @@ export interface ClosureInput {
   reason: string | null;
 }
 
+/** §S13: quiet < 50 %, filling < 80 %, almost_full < 100 %, full. */
+export type FullnessLevel = 'quiet' | 'filling' | 'almost_full' | 'full';
+
 export interface LabSlot {
   start: IsoDateTime;
   end: IsoDateTime;
-  booked: number;
+  /** Number for staff (admin / instructor), null for students. */
+  booked: number | null;
   full: boolean;
+  /** §S13: before the day's class-session block (can't be booked). */
+  blocked: boolean;
+  /** null when blocked. */
+  level: FullnessLevel | null;
 }
 
 export interface LabDay {
@@ -564,11 +579,19 @@ export interface LabDay {
   weekday: number;
   open: boolean;
   closure: { kind: ClosureKind; reason: string | null } | null;
+  /** §S13: class sessions block the lab until this time ("HH:MM", "24:00" = whole day), else null. */
+  block_until: string | null;
+  /** null when closed or every slot is blocked. */
+  level: FullnessLevel | null;
+  /** Staff only (null for students): bookings / capacity over unblocked slots. */
+  booked: number | null;
+  slot_capacity: number | null;
   slots: LabSlot[];
 }
 
 export interface LabCalendar {
-  capacity: number;
+  /** Staff only; null for students. */
+  capacity: number | null;
   days: LabDay[];
 }
 
@@ -654,9 +677,107 @@ export interface S3Api {
   adminSetLabHours(hours: LabHours[]): Promise<Result<LabHours[]>>;
   listClosures(from: IsoDate, to: IsoDate): Promise<Result<Closure[]>>;
   adminAddClosures(items: ClosureInput[]): Promise<Result<{ added: number; updated: number }>>;
-  adminDeleteClosure(id: Uuid): Promise<Result<{ ok: true }>>;
+  adminDeleteClosure(id: Uuid, wholeRange?: boolean): Promise<Result<{ ok: true; deleted: number }>>;
   adminListLabBookings(from: IsoDate, to: IsoDate): Promise<Result<LabBookingRow[]>>;
   adminLabCredits(cohortId: Uuid): Promise<Result<LabCreditRow[]>>;
   adminAdjustCredits(enrolmentId: Uuid, amount: number, reason: string): Promise<Result<{ allowance: number; used: number; remaining: number }>>;
   adminClearSuspension(enrolmentId: Uuid): Promise<Result<{ suspended: false }>>;
+}
+
+// ───────────────────────── S13 — Lab calendars, closure ranges (CONTRACT.md §S13) ─────────────────────────
+
+export interface ClosureRangeInput {
+  from: IsoDate;
+  to: IsoDate;
+  kind: ClosureKind;
+  reason: string | null;
+}
+
+export interface S13Api {
+  adminAddClosureRange(input: ClosureRangeInput): Promise<Result<{ added: number; updated: number; range_id: Uuid }>>;
+}
+
+// ───────────────────────── S14 — Class materials + class sessions (CONTRACT.md §S14) ─────────────────────────
+
+export interface ClassSession {
+  id: Uuid;
+  cohort_id: Uuid;
+  date: IsoDate;
+  /** "HH:MM" Colombo. */
+  start_time: string;
+  end_time: string;
+  starts_at: IsoDateTime;
+  ends_at: IsoDateTime;
+  title: string;
+  group_nos: number[];
+  deliverables: string[];
+  /** "HH:MM", "24:00" (whole day) or null (doesn't block the lab). */
+  lab_block_until: string | null;
+  content: { id: Uuid; kind: ContentKind; title: string; status: ContentStatus }[];
+}
+
+export interface ClassSessionInput {
+  id: Uuid | null;
+  cohort_id: Uuid;
+  date: IsoDate;
+  start_time: string;
+  end_time: string;
+  title: string;
+  group_nos: number[];
+  deliverables: string[];
+  lab_block_until: string | null;
+  content_ids: Uuid[];
+}
+
+export interface MySession {
+  id: Uuid;
+  date: IsoDate;
+  start_time: string;
+  end_time: string;
+  starts_at: IsoDateTime;
+  ends_at: IsoDateTime;
+  title: string;
+  group_nos: number[];
+  deliverables: string[];
+  /** `available` = visible to the caller now (only then link to /c/:id). */
+  content: { id: Uuid; kind: ContentKind; title: string; available: boolean }[];
+}
+
+export interface MySessions {
+  next: MySession | null;
+  upcoming: MySession[];
+  recent: MySession[];
+}
+
+export interface S14Api {
+  adminListClassSessions(cohortId: Uuid): Promise<Result<ClassSession[]>>;
+  adminUpsertClassSession(input: ClassSessionInput): Promise<Result<ClassSession>>;
+  adminDeleteClassSession(id: Uuid): Promise<Result<{ ok: true }>>;
+  getMySessions(cohortId: Uuid): Promise<Result<MySessions>>;
+}
+
+// ───────────────────────── S16 — Web push (CONTRACT.md §S16) ─────────────────────────
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+}
+
+export interface PushStats {
+  users: number;
+  devices: number;
+  students: number;
+  students_with_push: number;
+  queued: number;
+}
+
+export interface S16Api {
+  savePushSubscription(sub: PushSubscriptionInput): Promise<Result<{ id: Uuid }>>;
+  deletePushSubscription(endpoint: string): Promise<Result<{ ok: true }>>;
+  getMyPush(): Promise<Result<{ devices: number }>>;
+  adminPushStats(): Promise<Result<PushStats>>;
+  adminPushTest(): Promise<Result<{ queued: number }>>;
+  adminPushSend(): Promise<Result<{ sent: number; failed: number; skipped: number; remaining: number }>>;
 }
