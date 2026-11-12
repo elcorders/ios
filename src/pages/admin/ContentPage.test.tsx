@@ -45,6 +45,18 @@ describe('admin content tab', () => {
     await waitFor(() => expect(rowOf(/Fresh page/)).toHaveTextContent('Draft'));
   });
 
+  it('warns when the page navigates from its script (breaks inside the srcdoc viewer)', async () => {
+    open();
+    await screen.findByText('Tutorial 1 — Demo game');
+    fireEvent.click(screen.getByRole('button', { name: 'Add tutorial' }));
+    const bad = new File(['<html><head><title>Deck</title></head><body><script>location.replace(`#slide-1`);</script></body></html>'], 'd.html', { type: 'text/html' });
+    fireEvent.change(within(dialog()).getByLabelText(/HTML file/), { target: { files: [bad] } });
+    expect(await within(dialog()).findByRole('note')).toHaveTextContent(/blank frame/);
+    const ok = new File(['<html><head><title>Deck</title></head><body><script>location.hash = "slide-1";</script></body></html>'], 'd.html', { type: 'text/html' });
+    fireEvent.change(within(dialog()).getByLabelText(/HTML file/), { target: { files: [ok] } });
+    await waitFor(() => expect(within(dialog()).queryByRole('note')).toBeNull());
+  });
+
   it('requires a file on create', async () => {
     open();
     await screen.findByText('Tutorial 1 — Demo game');

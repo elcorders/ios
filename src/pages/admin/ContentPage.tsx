@@ -6,7 +6,7 @@ import { formatColombo } from '../../lib/time';
 import { useAdmin } from './AdminContext';
 import { Dialog } from './Dialog';
 import {
-  contentError, formatSize, MAX_HTML_BYTES, readFileText, statusLabel, titleFromHtml,
+  contentError, formatSize, FRAME_NAV_WARNING, hasFrameNavigation, MAX_HTML_BYTES, readFileText, statusLabel, titleFromHtml,
 } from './contentHelpers';
 import './content.css';
 
@@ -224,6 +224,7 @@ function EditDialog({ kind, cohortId, row, onCancel, onDone }: BaseProps & {
         <label htmlFor="ct-file">HTML file{row ? ' (optional, keeps the current page)' : ''}</label>
         <input id="ct-file" type="file" accept=".html,.htm" onChange={(e) => void pick(e.target.files?.[0])} />
         {file ? <span className="content-file">{file.name} ({formatSize(file.size)})</span> : null}
+        {file && hasFrameNavigation(file.text) ? <p className="banner" role="note">{FRAME_NAV_WARNING}</p> : null}
       </div>
       <div className="field">
         <label htmlFor="ct-title">Title</label>
