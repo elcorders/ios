@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -339,6 +339,12 @@ export interface AdminContentRow {
   linked_sessions: number;
   /** §S14: earliest linked session start still in the future, else null. */
   release_at: IsoDateTime | null;
+  /** §S17: library + version of this cohort link (null for resources). */
+  library_id: Uuid | null;
+  version_no: number | null;
+  latest_version_no: number | null;
+  /** Links of the same library (incl. this one); 0 for resources. */
+  link_count: number;
 }
 
 export interface AdminContentItem extends Omit<ContentItem, 'published_at'> {
@@ -780,4 +786,51 @@ export interface S16Api {
   adminPushStats(): Promise<Result<PushStats>>;
   adminPushTest(): Promise<Result<{ queued: number }>>;
   adminPushSend(): Promise<Result<{ sent: number; failed: number; skipped: number; remaining: number }>>;
+}
+
+// ───────────────────────── S17 — Content library + versions (CONTRACT.md §S17) ─────────────────────────
+
+export interface LibraryLink {
+  content_id: Uuid;
+  cohort_id: Uuid;
+  cohort_code: string;
+  cohort_status: CohortStatus;
+  version_no: number;
+  status: ContentStatus;
+  published_at: IsoDateTime | null;
+}
+
+export interface LibraryItem {
+  id: Uuid;
+  kind: ContentKind;
+  title: string;
+  summary: string | null;
+  latest_version_no: number;
+  version_count: number;
+  links: LibraryLink[];
+  updated_at: IsoDateTime;
+}
+
+export interface LibraryVersion {
+  id: Uuid;
+  version_no: number;
+  note: string | null;
+  size_bytes: number;
+  created_at: IsoDateTime;
+  link_count: number;
+}
+
+export interface LibraryDetail extends LibraryItem {
+  /** Newest first. */
+  versions: LibraryVersion[];
+}
+
+export interface S17Api {
+  adminListLibrary(kind: ContentKind): Promise<Result<LibraryItem[]>>;
+  adminGetLibrary(id: Uuid): Promise<Result<LibraryDetail>>;
+  adminUpsertLibrary(id: Uuid, title: string, summary: string | null): Promise<Result<LibraryItem>>;
+  adminAddLibraryVersion(id: Uuid, bodyHtml: string, note: string | null): Promise<Result<LibraryDetail>>;
+  adminSetLinkVersions(versionId: Uuid, contentIds: Uuid[]): Promise<Result<{ updated: number }>>;
+  adminLinkLibrary(id: Uuid, cohortId: Uuid, versionId: Uuid | null, position: number): Promise<Result<AdminContentRow>>;
+  adminDeleteLibrary(id: Uuid): Promise<Result<{ ok: true }>>;
 }

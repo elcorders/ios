@@ -1,6 +1,6 @@
-import type { S1Api, S2Api, S6Api, S7Api, S8Api, S9Api, S10Api, S3Api, S13Api, S14Api, S16Api } from './types';
+import type { S1Api, S2Api, S6Api, S7Api, S8Api, S9Api, S10Api, S3Api, S13Api, S14Api, S16Api, S17Api } from './types';
 
-type SliceApi = S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api;
+type SliceApi = S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api;
 
 /** Placeholder for methods a slice's F (mock) or I (supabase) task has not implemented yet. */
 const S1_METHODS = [
@@ -34,6 +34,9 @@ const S1_METHODS = [
   'adminListClassSessions', 'adminUpsertClassSession', 'adminDeleteClassSession', 'getMySessions',
   // S16
   'savePushSubscription', 'deletePushSubscription', 'getMyPush', 'adminPushStats', 'adminPushTest', 'adminPushSend',
+  // S17
+  'adminListLibrary', 'adminGetLibrary', 'adminUpsertLibrary', 'adminAddLibraryVersion', 'adminSetLinkVersions',
+  'adminLinkLibrary', 'adminDeleteLibrary',
 ] as const satisfies readonly (keyof SliceApi)[];
 
 // Compile-time check that S1_METHODS lists every slice method.
