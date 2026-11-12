@@ -108,6 +108,11 @@ code { font-family: var(--mono); font-size: 0.9em; }
   box-shadow: 0 4px 14px rgba(61, 139, 255, 0.25);
 }
 .main-nav { display: flex; align-items: center; gap: 0.25rem; }
+/* Narrow screens: the links scroll sideways inside the header instead of widening the page. */
+.main-nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.main-nav::-webkit-scrollbar { display: none; }
+.main-nav a, .main-nav .icon-btn { flex: none; }
+.app-name { flex: none; }
 .main-nav a {
   padding: 0.4rem 0.75rem; border-radius: 999px;
   color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 550;
