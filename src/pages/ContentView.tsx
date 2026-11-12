@@ -42,11 +42,12 @@ export function ContentView() {
     );
   }
   const { item } = state;
-  const back = item.kind === 'tutorial' ? '/tutorials' : '/resources';
+  const [back, backLabel] =
+    item.kind === 'tutorial' ? ['/tutorials', 'Tutorials'] : item.kind === 'material' ? ['/materials', 'Class materials'] : ['/resources', 'Resources'];
   return (
     <section className="content-view">
       <div className="content-view-bar">
-        <Link to={back} className="back-link" aria-label={`Back to ${item.kind === 'tutorial' ? 'Tutorials' : 'Resources'}`}>←</Link>
+        <Link to={back} className="back-link" aria-label={`Back to ${backLabel}`}>←</Link>
         <div className="content-view-title">
           <h1>{item.title}</h1>
           <p className="muted">Published {formatColombo(item.published_at, { dateStyle: 'medium' })}</p>

@@ -36,6 +36,16 @@ describe('content pages', () => {
     expect(f.getAttribute('sandbox')).not.toContain('allow-same-origin');
     expect(screen.getByRole('link', { name: /Back to Tutorials/ })).toBeInTheDocument();
   });
+  it('lists visible class materials and hides session-gated ones', async () => {
+    open('/materials');
+    expect(await screen.findByRole('heading', { name: 'Class materials' })).toBeInTheDocument();
+    expect(await screen.findByText('Setup guide')).toBeInTheDocument();
+    expect(screen.queryByText(/Week 2 slides/)).toBeNull();
+  });
+  it('materials viewer links back to class materials', async () => {
+    open('/c/content-m2');
+    expect(await screen.findByRole('link', { name: 'Back to Class materials' })).toHaveAttribute('href', '/materials');
+  });
   it('shows a friendly message for unavailable items', async () => {
     open('/c/content-t2');
     expect(await screen.findByRole('heading', { name: 'Not available yet' })).toBeInTheDocument();

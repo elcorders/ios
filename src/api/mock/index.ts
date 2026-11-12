@@ -7,6 +7,7 @@ import { mockSurvey } from './survey';
 import { mockContent } from './content';
 import { mockTransfers } from './transfers';
 import { mockLab } from './lab';
+import { mockSessions } from './sessions';
 
 export const mockApi: Api = {
   ...notImplemented('mock'),
@@ -17,6 +18,7 @@ export const mockApi: Api = {
   ...mockContent,
   ...mockTransfers,
   ...mockLab,
+  ...mockSessions,
   async health() {
     return { ok: true, data: { adapter: 'mock', ok: true } };
   },

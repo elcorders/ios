@@ -38,7 +38,7 @@ export function ContentList({ kind, heading, intro }: { kind: ContentKind; headi
   const groups: [string | null, ContentSummary[]][] = [];
   if (state.step === 'ready') {
     const codes = [...new Set(state.items.map((i) => i.cohort_code))];
-    const grouped = kind === 'tutorial' && codes.length > 1;
+    const grouped = kind !== 'resource' && codes.length > 1;
     if (grouped) for (const c of codes) groups.push([c, state.items.filter((i) => i.cohort_code === c)]);
     else groups.push([null, state.items]);
   }

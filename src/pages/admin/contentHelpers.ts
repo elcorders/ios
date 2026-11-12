@@ -33,7 +33,11 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-export function statusLabel(row: Pick<AdminContentRow, 'status' | 'published_at'>): string {
+export function statusLabel(row: Pick<AdminContentRow, 'status' | 'published_at'> & { release_at?: string | null }): string {
+  if (row.status === 'on_session') {
+    return row.release_at ? `On session · next ${formatColombo(row.release_at, { day: '2-digit', month: 'short' })} ${formatColombo(row.release_at, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : 'On session';
+  }
+  if (row.status === 'published' && !row.published_at) return 'Published (by session)';
   if (row.status === 'draft' || !row.published_at) return 'Draft';
   const when = formatColombo(row.published_at);
   return row.status === 'scheduled' ? `Scheduled ${when}` : `Published ${when}`;

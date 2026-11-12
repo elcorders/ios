@@ -1,0 +1,16 @@
+.classes-page { display: grid; gap: 1rem; }
+.classes-page header.classes-head { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; }
+.classes-page h2 { margin: 0; font-size: 1.1rem; }
+.class-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.625rem; }
+.class-item { display: grid; gap: 0.375rem; padding: 0.875rem 1rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.class-item h3 { margin: 0; font-size: 1rem; }
+.class-when { font-weight: 600; font-size: 0.9rem; }
+.class-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; color: var(--muted); font-size: 0.85rem; }
+.class-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.class-actions { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.class-actions button { min-height: 2.125rem; padding: 0.375rem 0.625rem; font-size: 0.8rem; }
+.check-list { display: grid; gap: 0.375rem; margin: 0; padding: 0; border: none; }
+.check-list legend { padding: 0; margin-bottom: 0.25rem; }
+.check-list label { display: flex; gap: 0.5rem; align-items: center; }
+.check-row { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.class-times { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; }

@@ -123,4 +123,34 @@ describe('admin content tab', () => {
     expect(await screen.findByRole('button', { name: 'Add resource' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete Lab Mac setup' })).toBeInTheDocument();
   });
+
+  it('has a Class materials block with the on_session label', async () => {
+    open();
+    expect(await screen.findByRole('heading', { name: 'Class materials — 25.2' })).toBeInTheDocument();
+    await screen.findByText('Week 2 slides — Layouts');
+    expect(rowOf(/Week 2 slides/)).toHaveTextContent(/On session · next \d{2} [A-Z][a-z]{2} \d{2}:\d{2}/);
+    expect(rowOf(/Setup guide/)).toHaveTextContent('Published');
+    expect(screen.getByRole('button', { name: 'Add material' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Copy from another cohort' })).toHaveLength(1);
+  });
+
+  it('adds a material as a draft and makes materials read-only when archived', async () => {
+    open();
+    await screen.findByText('Setup guide');
+    fireEvent.click(screen.getByRole('button', { name: 'Add material' }));
+    const file = new File(['<html><head><title>Fresh material</title></head><body>x</body></html>'], 'f.html', { type: 'text/html' });
+    fireEvent.change(within(dialog()).getByLabelText(/HTML file/), { target: { files: [file] } });
+    await waitFor(() => expect(within(dialog()).getByLabelText('Title')).toHaveValue('Fresh material'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(rowOf(/Fresh material/)).toHaveTextContent('Draft'));
+  });
+
+  it('shows archived-cohort materials read-only', async () => {
+    localStorage.setItem('ios.admin.cohort', '00000000-0000-4000-8000-000000000251');
+    open();
+    await screen.findByRole('heading', { name: 'Class materials — 25.1' });
+    await screen.findByText('Old tutorial');
+    expect(screen.queryByRole('button', { name: 'Add material' })).not.toBeInTheDocument();
+    expect(screen.getByText(/materials are read-only/)).toBeInTheDocument();
+  });
 });

@@ -35,6 +35,14 @@ export function ContentPage() {
         readOnly={readOnly}
         onChanged={reloadCohorts}
       />
+      <ContentSection
+        key={`m-${cohort.id}`}
+        kind="material"
+        cohort={cohort}
+        cohorts={cohorts}
+        readOnly={readOnly}
+        onChanged={reloadCohorts}
+      />
       <ContentSection key="r" kind="resource" cohort={cohort} cohorts={cohorts} readOnly={false} onChanged={reloadCohorts} />
     </div>
   );
@@ -49,10 +57,10 @@ interface SectionProps {
 }
 
 function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
-  const cohortId = kind === 'tutorial' ? cohort.id : null;
   const isTut = kind === 'tutorial';
-  const heading = isTut ? `Tutorials — ${cohort.code}` : 'Common resources';
-  const noun = isTut ? 'tutorial' : 'resource';
+  const cohortId = kind === 'resource' ? null : cohort.id;
+  const heading = isTut ? `Tutorials — ${cohort.code}` : kind === 'material' ? `Class materials — ${cohort.code}` : 'Common resources';
+  const noun = isTut ? 'tutorial' : kind === 'material' ? 'material' : 'resource';
   const [rows, setRows] = useState<AdminContentRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -102,7 +110,7 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
           {!readOnly ? <button type="button" onClick={() => setDlg({ type: 'edit', row: null })}>Add {noun}</button> : null}
         </div>
       </header>
-      {isTut && readOnly ? <p role="status" className="banner">Archived cohort: tutorials are read-only.</p> : null}
+      {kind !== 'resource' && readOnly ? <p role="status" className="banner">Archived cohort: {noun}s are read-only.</p> : null}
       {notice ? <p role="status">{notice}</p> : null}
       {error ? <p role="alert" className="error">{error}</p> : null}
       {rows === null ? (
@@ -140,7 +148,7 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                             >Publish now</button>
                           ) : null}
                           <button type="button" aria-label={`Schedule ${r.title}`} onClick={() => setDlg({ type: 'schedule', row: r })}>Schedule…</button>
-                          {r.status !== 'draft' ? (
+                          {r.published_at ? (
                             <button
                               type="button"
                               aria-label={`Unpublish ${r.title}`}
