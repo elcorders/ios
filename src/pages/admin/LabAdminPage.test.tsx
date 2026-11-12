@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { routes } from '../../routes';
 import { api } from '../../api';
 import { resetMockAuth } from '../../api/mock/auth';
 import { resetMockAdmin } from '../../api/mock/admin';
+import { resetMockSessions, setSessionRows } from '../../api/mock/sessionStore';
+import { MOCK_COHORT } from '../../api/mock/fixtures/s1';
 import { addDaysIso, colomboToday, parseClosureLines } from './lab/labHelpers';
 
 async function open(path: string) {
@@ -45,6 +47,8 @@ describe('Admin > Lab switch', () => {
 describe('Admin > Lab', () => {
   it('redirects to Macs, edits a Mac and toggles service', async () => {
     await open('/admin/lab');
+    expect(await screen.findByRole('heading', { name: 'Calendar' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Macs' }));
     const table = await screen.findByRole('table', { name: 'Lab Macs' });
     expect(within(table).getByText('Mac 13')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Take Mac 1 out of service' }));
@@ -103,7 +107,7 @@ describe('Admin > Lab', () => {
     await open('/admin/lab/closures');
     await screen.findByRole('table', { name: 'Upcoming public holidays' });
     const d = addDaysIso(colomboToday(), 60);
-    fireEvent.change(screen.getByLabelText('Date (public holiday)'), { target: { value: d } });
+    fireEvent.change(screen.getByLabelText('From (public holiday)'), { target: { value: d } });
     fireEvent.click(screen.getByRole('button', { name: 'Add public holiday' }));
     expect(await screen.findByText('Added 1, updated 0.')).toBeInTheDocument();
     expect(within(await screen.findByRole('table', { name: 'Upcoming public holidays' })).getByText(d)).toBeInTheDocument();
@@ -150,5 +154,82 @@ describe('Admin > Lab', () => {
 
     fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'zzzz' } });
     expect(screen.getByText('No matching students.')).toBeInTheDocument();
+  });
+});
+
+describe('Admin > Lab > Calendar', () => {
+  afterEach(() => resetMockSessions());
+
+  it('renders the month grid with booked / capacity, levels and a class block, then shows the day detail', async () => {
+    const t = colomboToday();
+    const day = addDaysIso(t, 1);
+    setSessionRows([{
+      id: 's-cal', cohort_id: MOCK_COHORT.id, date: t, start_time: '09:00', end_time: '12:00', title: 'Fictional class',
+      group_nos: [1], deliverables: [], lab_block_until: '16:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+    }]);
+    await open('/admin/lab/calendar');
+    const grid = await screen.findByRole('list', { name: /^Lab calendar / });
+    expect(within(grid).getAllByRole('button').length).toBeGreaterThanOrEqual(28);
+    const todayBtn = within(grid).getByRole('button', { name: /today/ });
+    expect(todayBtn).toHaveAttribute('aria-current', 'date');
+    expect(within(todayBtn).getAllByText('Class until 16:00').length).toBeGreaterThan(0);
+    // pick a day and read the hour rows
+    const dayBtn = within(grid).getAllByRole('button').find((b) => b.getAttribute('aria-label')?.startsWith(
+      new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${day}T12:00:00+05:30`)).replace(/,/g, ''),
+    ));
+    expect(dayBtn).toBeTruthy();
+    fireEvent.click(dayBtn!);
+    expect(await screen.findByRole('link', { name: 'Open this day in Bookings' })).toHaveAttribute('href', `/admin/lab/bookings?date=${day}`);
+  });
+
+  it('navigates months and lists hours with level and blocked rows', async () => {
+    const t = colomboToday();
+    setSessionRows([{
+      id: 's-cal2', cohort_id: MOCK_COHORT.id, date: t, start_time: '09:00', end_time: '12:00', title: 'Fictional class',
+      group_nos: [1], deliverables: [], lab_block_until: '24:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+    }]);
+    await open('/admin/lab/calendar');
+    const grid = await screen.findByRole('list', { name: /^Lab calendar / });
+    fireEvent.click(within(grid).getByRole('button', { name: /today/ }));
+    expect(within(await screen.findByRole('region', { name: /^Details for / })).getAllByText(/Class \(whole day\)/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(await screen.findByRole('button', { name: 'This month' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /^Details for / })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'This month' }));
+    expect(await screen.findByRole('list', { name: /^Lab calendar / })).toBeInTheDocument();
+  });
+});
+
+describe('Admin > Lab > Closures ranges', () => {
+  it('adds a range, shows it as part of a range and deletes the whole range', async () => {
+    await open('/admin/lab/closures');
+    await screen.findByRole('table', { name: 'Upcoming lab closures' });
+    const from = addDaysIso(colomboToday(), 40);
+    const to = addDaysIso(from, 2);
+    fireEvent.change(screen.getByLabelText('From (lab closure)'), { target: { value: from } });
+    fireEvent.change(screen.getByLabelText('To (lab closure, optional)'), { target: { value: to } });
+    fireEvent.change(screen.getByLabelText('Reason (lab closure)'), { target: { value: 'Fictional break' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    expect(await screen.findByText('Added 3, updated 0.')).toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: 'Upcoming lab closures' });
+    expect(within(table).getAllByText(/part of range/)).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: `Delete range of lab closure ${from}` }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Delete range' })).getByRole('button', { name: 'Delete range' }));
+    expect(await screen.findByText('Range deleted (3 days).')).toBeInTheDocument();
+    expect(within(await screen.findByRole('table', { name: 'Upcoming lab closures' })).getByText('No upcoming lab closures.')).toBeInTheDocument();
+  });
+
+  it('rejects To before From and keeps single-day add working', async () => {
+    await open('/admin/lab/closures');
+    await screen.findByRole('table', { name: 'Upcoming lab closures' });
+    const from = addDaysIso(colomboToday(), 40);
+    fireEvent.change(screen.getByLabelText('From (lab closure)'), { target: { value: from } });
+    fireEvent.change(screen.getByLabelText('To (lab closure, optional)'), { target: { value: addDaysIso(from, -1) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    expect(await screen.findByText('To must be on or after From.')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('To (lab closure, optional)'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    expect(await screen.findByText('Added 1, updated 0.')).toBeInTheDocument();
+    expect(screen.queryByText(/part of range/)).toBeNull();
   });
 });

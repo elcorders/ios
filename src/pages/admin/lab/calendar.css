@@ -1,0 +1,37 @@
+.cal-nav { align-items: center; justify-content: space-between; gap: 0.5rem; }
+.cal-heads, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
+.cal-heads span { font-size: 0.75rem; color: var(--muted); text-align: center; }
+.cal-grid { list-style: none; margin: 0; padding: 0; }
+.cal-cell {
+  width: 100%; min-height: 6.5rem; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  gap: 0.2rem; padding: 0.4rem; text-align: left; font-size: 0.75rem; background: var(--surface-2); border: 1px solid var(--border);
+}
+.cal-cell[aria-pressed='true'] { outline: 2px solid var(--accent); }
+.cal-cell-today { border-color: var(--accent); }
+.cal-cell-closed { opacity: 0.7; }
+.cal-date { display: flex; align-items: baseline; gap: 0.35rem; }
+.cal-num { font-weight: 700; font-size: 0.95rem; }
+.cal-wd { display: none; font-weight: 600; }
+.cal-today { font-size: 0.65rem; padding: 0 0.3rem; border-radius: 999px; background: var(--accent); color: var(--on-accent); }
+.cal-note { color: var(--muted); overflow-wrap: anywhere; }
+.cal-block { color: var(--text); }
+.cal-count { font-weight: 600; }
+.cal-bar { display: block; height: 0.4rem; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.cal-fill { display: block; height: 100%; }
+.cal-fill-quiet { background: var(--success); }
+.cal-fill-filling { background: var(--accent); }
+.cal-fill-almost_full { background: var(--warn); }
+.cal-fill-full { background: var(--danger); }
+.cal-hours { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.cal-hours li { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.cal-hours .lab-slot-time { min-width: 3.5rem; }
+.cal-hour-blocked { opacity: 0.7; }
+
+/* Phone: one row per day instead of a grid. */
+@media (max-width: 640px) {
+  .cal-heads, .cal-pad { display: none; }
+  .cal-grid { grid-template-columns: 1fr; }
+  .cal-cell { min-height: 0; font-size: 0.85rem; }
+  .cal-wd { display: inline; }
+  .cal-num { display: none; }
+}

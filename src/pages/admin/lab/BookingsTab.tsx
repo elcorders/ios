@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../../api';
 import type { LabBookingRow } from '../../../api/types';
 import { messageFor } from '../../../lib/errors';
@@ -8,7 +9,11 @@ import { colomboToday, isValidDate } from './labHelpers';
 const timeOnly: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
 
 export function BookingsTab() {
-  const [date, setDate] = useState(colomboToday);
+  const [params] = useSearchParams();
+  const [date, setDate] = useState(() => {
+    const q = params.get('date');
+    return q && isValidDate(q) ? q : colomboToday();
+  });
   const [rows, setRows] = useState<LabBookingRow[] | null>(null);
   const [capacity, setCapacity] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);

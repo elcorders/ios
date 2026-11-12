@@ -6,6 +6,7 @@ import { api } from '../api';
 import { resetMockAuth } from '../api/mock/auth';
 import { mockSetBookingStatus } from '../api/mock/lab';
 import { MOCK_COHORT } from '../api/mock/fixtures/s1';
+import { resetMockSessions, setSessionRows } from '../api/mock/sessionStore';
 
 // Monday 2026-11-09 10:00 Colombo. Mock lab: Tue 10th has a full 10:00 slot; Thu 12th is a class day.
 const NOW = new Date('2026-11-09T10:00:00+05:30');
@@ -21,10 +22,12 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
   resetMockAuth();
+  setSessionRows([]);
 });
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
+  resetMockSessions();
 });
 
 describe('lab page: closed', () => {
@@ -82,10 +85,37 @@ describe('lab page: eligible student', () => {
     const full = screen.getByRole('checkbox', { name: /10:00 to 11:00/ });
     expect(full).toBeDisabled();
     expect(screen.getByText('Full')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /14:00 to 15:00/ })).toHaveAccessibleName(/7 seats left/);
+    expect(screen.getByRole('checkbox', { name: /14:00 to 15:00/ })).toHaveAccessibleName(/Quiet/);
+    expect(screen.queryByText(/seats? left/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Thu 12 Nov/ }));
     expect(screen.getByText(/closed on Thu 12 Nov: Class day \(fictional\)/)).toBeInTheDocument();
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  it('shows a level chip per day and never numbers', async () => {
+    setSessionRows([{
+      id: 's1', cohort_id: C, date: '2026-11-11', start_time: '09:00', end_time: '12:00', title: 'Fictional class',
+      group_nos: [1], deliverables: [], lab_block_until: '24:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+    }]);
+    open();
+    const tue = await screen.findByRole('button', { name: /Tue 10 Nov/ });
+    expect(within(tue).getByText('Quiet')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /Wed 11 Nov/ })).getByText('Class day')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /Thu 12 Nov/ })).getByText('Class day')).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ (of|seats)/, { selector: '.lab-day *, .lab-slots *' })).toBeNull();
+  });
+
+  it('shows blocked slots as class time and cannot select them', async () => {
+    setSessionRows([{
+      id: 's2', cohort_id: C, date: '2026-11-10', start_time: '09:00', end_time: '12:00', title: 'Fictional class',
+      group_nos: [1], deliverables: [], lab_block_until: '16:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+    }]);
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: /Tue 10 Nov/ }));
+    const blocked = screen.getByRole('checkbox', { name: /09:00 to 10:00/ });
+    expect(blocked).toBeDisabled();
+    expect(blocked).toHaveAccessibleName(/Class until 16:00/);
+    expect(screen.getByRole('checkbox', { name: /16:00 to 17:00/ })).toBeEnabled();
   });
 
   it('books a slot, asks for a preferred Mac, and lists the booking', async () => {

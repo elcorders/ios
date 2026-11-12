@@ -1,11 +1,12 @@
 import type {
   ApiError, BookWarning, Booking, BookingStatus, Closure, ClosureKind, IsoDate, IsoDateTime, LabBookingRow, LabCalendar,
-  LabCreditRow, LabDay, LabHours, Mac, MyLab, Result, S3Api,
+  FullnessLevel, LabCreditRow, LabDay, LabHours, LabSlot, Mac, MyLab, Result, S13Api, S3Api,
 } from '../types';
 import { getMockCurrentEmail } from './auth';
 import { getMockLabOpen } from './cohortState';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS, type MockUser } from './fixtures/s1';
 import { mockActiveStudents, mockGroupOf } from './survey';
+import { labBlockUntil } from './sessionStore';
 
 /** S3 mock (CONTRACT.md §S3). In-memory, fictional data. All calendar logic is Asia/Colombo (+05:30, no DST). */
 
@@ -100,6 +101,15 @@ const slotHours = (d: IsoDate): number[] => {
 const capacity = () => macs.filter((m) => m.status === 'in_service').length;
 const counted = (b: MockBooking) => b.status !== 'withdrawn';
 const seatsTaken = (ms: number) => bookings.filter((b) => counted(b) && b.slot_ms === ms).length;
+/** §S13 lab_level: one helper for every fullness label. */
+export function labLevel(booked: number, cap: number): FullnessLevel {
+  if (cap <= 0 || booked >= cap) return 'full';
+  const r = booked / cap;
+  return r < 0.5 ? 'quiet' : r < 0.8 ? 'filling' : 'almost_full';
+}
+const minutesOf = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+const isStaff = (u: MockUser) => u.profile.is_admin || u.role === 'instructor';
+const slotBlocked = (blockUntil: string | null, hour: number) => blockUntil !== null && hour * 60 < minutesOf(blockUntil);
 const macNo = (id: string | null) => (id ? (macs.find((m) => m.id === id)?.no ?? null) : null);
 
 function toBooking(b: MockBooking): Booking {
@@ -128,8 +138,8 @@ function seed(): void {
   hours = [1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, open_time: '09:00', close_time: '19:00' }));
   const t = today();
   closures = [
-    { id: newId('000000005'), date: addDays(t, 3), kind: 'class_day', reason: 'Class day (fictional)', created_by: null, created_at: stamp },
-    { id: newId('000000005'), date: addDays(t, 5), kind: 'holiday', reason: 'Public holiday (fictional)', created_by: null, created_at: stamp },
+    { id: newId('000000005'), date: addDays(t, 3), kind: 'class_day', reason: 'Class day (fictional)', range_id: null, created_by: null, created_at: stamp },
+    { id: newId('000000005'), date: addDays(t, 5), kind: 'holiday', reason: 'Public holiday (fictional)', range_id: null, created_by: null, created_at: stamp },
   ];
   bookings = [];
   adjustments = [];
@@ -257,29 +267,51 @@ function suggestionsFor(slotMsValue: number, prefId: string, enrolmentId: string
 // ───────────── API ─────────────
 const rangeOk = (from: unknown, to: unknown) => validDate(from) && validDate(to) && diffDays(from, to) >= 0 && diffDays(from, to) <= 31;
 
-export const mockLab: S3Api = {
+export const mockLab: S3Api & S13Api = {
   async getLabCalendar(from, to) {
     const u = currentUser();
     if (!u) return fail('not_authenticated');
     if (!canRead(u)) return fail('forbidden');
     if (!rangeOk(from, to)) return fail('invalid_input');
+    const staff = isStaff(u);
+    const cap = capacity();
     const days: LabDay[] = [];
     for (let d = from; d <= to; d = addDays(d, 1)) {
       const c = closureOn(d);
-      const slots = slotHours(d).map((h) => {
+      const blockUntil = labBlockUntil(d);
+      let sumBooked = 0;
+      let unblocked = 0;
+      const slots: LabSlot[] = slotHours(d).map((h) => {
         const ms = slotMs(d, h);
         const booked = seatsTaken(ms);
-        return { start: toIso(ms), end: toIso(ms + HOUR_MS), booked, full: booked >= capacity() };
+        const blocked = slotBlocked(blockUntil, h);
+        if (!blocked) {
+          sumBooked += booked;
+          unblocked += 1;
+        }
+        return {
+          start: toIso(ms),
+          end: toIso(ms + HOUR_MS),
+          blocked,
+          full: !blocked && booked >= cap,
+          level: blocked ? null : labLevel(booked, cap),
+          booked: staff ? booked : null,
+        };
       });
+      const sumCap = unblocked * cap;
       days.push({
         date: d,
         weekday: weekdayOf(d),
         open: isOpenDay(d),
         closure: c ? { kind: c.kind, reason: c.reason } : null,
+        block_until: blockUntil,
+        level: unblocked ? labLevel(sumBooked, sumCap) : null,
+        booked: staff ? sumBooked : null,
+        slot_capacity: staff ? sumCap : null,
         slots,
       });
     }
-    const out: LabCalendar = { capacity: capacity(), days };
+    const out: LabCalendar = { capacity: staff ? cap : null, days };
     return ok(out);
   },
 
@@ -316,7 +348,8 @@ export const mockLab: S3Api = {
       const d = dateOf(ms);
       if (ms <= nowMs()) return fail('slot_past', hint);
       if (d > addDays(t, HORIZON_DAYS)) return fail('beyond_horizon', hint);
-      if (!slotHours(d).includes(Number(shifted(ms).toISOString().slice(11, 13)))) return fail('slot_closed', hint);
+      const hr = Number(shifted(ms).toISOString().slice(11, 13));
+      if (!slotHours(d).includes(hr) || slotBlocked(labBlockUntil(d), hr)) return fail('slot_closed', hint);
       if (bookings.some((b) => b.enrolment_id === e.id && counted(b) && b.slot_ms === ms)) return fail('already_booked', hint);
       if (seatsTaken(ms) >= capacity()) return fail('slot_full', hint);
       const k = cycleNoOf(d);
@@ -455,22 +488,51 @@ export const mockLab: S3Api = {
         existing.reason = reason;
         updated += 1;
       } else {
-        closures.push({ id: newId('000000005'), date: i.date, kind: i.kind, reason, created_by: u.profile.id, created_at: toIso(nowMs()) });
+        closures.push({ id: newId('000000005'), date: i.date, kind: i.kind, reason, range_id: null, created_by: u.profile.id, created_at: toIso(nowMs()) });
         added += 1;
       }
     }
     return ok({ added, updated });
   },
 
-  async adminDeleteClosure(id) {
+  async adminAddClosureRange(input) {
     const u = currentUser();
     if (!u) return fail('not_authenticated');
     if (!u.profile.is_admin && !isInstructor(u)) return fail('forbidden');
-    const i = closures.findIndex((c) => c.id === id);
-    if (i < 0) return fail('not_found');
-    if (!u.profile.is_admin && closures[i]?.kind !== 'closed') return fail('forbidden');
-    closures.splice(i, 1);
-    return ok({ ok: true as const });
+    const kinds: ClosureKind[] = ['holiday', 'closed', 'class_day'];
+    if (!input || !validDate(input.from) || !validDate(input.to) || !kinds.includes(input.kind)) return fail('invalid_input');
+    const span = diffDays(input.from, input.to);
+    if (span < 0 || span > 365) return fail('invalid_input');
+    if (!u.profile.is_admin && input.kind !== 'closed') return fail('forbidden');
+    const reason = input.reason?.trim() || null;
+    const rangeId = newId('000000006');
+    let added = 0;
+    let updated = 0;
+    for (let i = 0; i <= span; i += 1) {
+      const date = addDays(input.from, i);
+      const existing = closures.find((c) => c.date === date && c.kind === input.kind);
+      if (existing) {
+        existing.reason = reason;
+        existing.range_id = rangeId;
+        updated += 1;
+      } else {
+        closures.push({ id: newId('000000005'), date, kind: input.kind, reason, range_id: rangeId, created_by: u.profile.id, created_at: toIso(nowMs()) });
+        added += 1;
+      }
+    }
+    return ok({ added, updated, range_id: rangeId });
+  },
+
+  async adminDeleteClosure(id, wholeRange = false) {
+    const u = currentUser();
+    if (!u) return fail('not_authenticated');
+    if (!u.profile.is_admin && !isInstructor(u)) return fail('forbidden');
+    const row = closures.find((c) => c.id === id);
+    if (!row) return fail('not_found');
+    const targets = wholeRange && row.range_id ? closures.filter((c) => c.range_id === row.range_id) : [row];
+    if (!u.profile.is_admin && targets.some((c) => c.kind !== 'closed')) return fail('forbidden');
+    closures = closures.filter((c) => !targets.includes(c));
+    return ok({ ok: true as const, deleted: targets.length });
   },
 
   async adminListLabBookings(from, to) {

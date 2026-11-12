@@ -26,3 +26,10 @@
 .lab-confirm { margin: 0; padding-left: 1.25rem; }
 .lab-warning p { margin: 0; }
 .lab-reason { margin: 0; }
+/* Fullness level chips (§S13): colour plus always a text label. */
+.lab-level { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: var(--text); border: 1px solid transparent; white-space: nowrap; }
+.lab-day small.lab-level { color: var(--text); }
+.lab-level-quiet { background: color-mix(in srgb, var(--success) 22%, transparent); border-color: color-mix(in srgb, var(--success) 55%, transparent); }
+.lab-level-filling { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.lab-level-almost_full { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 60%, transparent); }
+.lab-level-full { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }

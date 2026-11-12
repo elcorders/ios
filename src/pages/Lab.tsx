@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import type { ApiError, BookWarning, Booking, IsoDate, IsoDateTime, LabCalendar, MyLab } from '../api/types';
+import type { ApiError, BookWarning, Booking, IsoDate, IsoDateTime, LabCalendar, LabDay, MyLab } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { messageFor } from '../lib/errors';
 import { formatColombo } from '../lib/time';
 import { Dialog } from './admin/Dialog';
+import { LEVEL_LABEL, blockText, isClassDay } from './admin/lab/levels';
 import './lab.css';
 
 const MAX_PICK = 13;
@@ -218,7 +219,6 @@ export function Lab() {
           <div className="lab-days" role="group" aria-label="Day">
             {days.map((d) => {
               const label = fmtDay(d.date);
-              const sub = d.closure ? CLOSURE_LABEL[d.closure.kind] : d.open ? null : 'Closed';
               return (
                 <button
                   key={d.date}
@@ -228,7 +228,7 @@ export function Lab() {
                   onClick={() => setDay(d.date)}
                 >
                   <span>{label}</span>
-                  {sub ? <small>{sub}</small> : null}
+                  <DayChip day={d} />
                 </button>
               );
             })}
@@ -247,15 +247,26 @@ export function Lab() {
                 const past = Date.parse(s.start) <= now;
                 const mine = myStarts.has(Date.parse(s.start));
                 const checked = picked.includes(s.start);
-                const left = Math.max(0, (calendar?.capacity ?? 0) - s.booked);
-                const blocked = past || s.full || mine || (!checked && atMax);
-                const status = mine ? 'Booked by you' : past ? 'Past' : s.full ? 'Full' : `${left} ${left === 1 ? 'seat' : 'seats'} left`;
+                const off = past || s.full || s.blocked || mine || (!checked && atMax);
+                const status = mine
+                  ? 'Booked by you'
+                  : s.blocked
+                    ? (blockText(dayData.block_until) ?? 'Class')
+                    : past
+                      ? 'Past'
+                      : s.level
+                        ? LEVEL_LABEL[s.level]
+                        : '';
                 return (
                   <li key={s.start}>
-                    <label className={`lab-slot${blocked ? ' lab-slot-off' : ''}`}>
-                      <input type="checkbox" checked={checked} disabled={blocked} onChange={() => toggle(s.start)} />
+                    <label className={`lab-slot${off ? ' lab-slot-off' : ''}`}>
+                      <input type="checkbox" checked={checked} disabled={off} onChange={() => toggle(s.start)} />
                       <span className="lab-slot-time">{fmtTime(s.start)} to {fmtTime(s.end)}</span>
-                      <span className={`lab-slot-status${s.full || past ? ' muted' : ''}`}>{status}</span>
+                      {s.level && !mine && !past && !s.blocked ? (
+                        <span className={`lab-level lab-level-${s.level}`}>{status}</span>
+                      ) : (
+                        <span className="lab-slot-status muted">{status}</span>
+                      )}
                     </label>
                   </li>
                 );
@@ -376,6 +387,13 @@ export function Lab() {
   );
 }
 
+function DayChip({ day }: { day: LabDay }) {
+  if (day.closure) return <small>{CLOSURE_LABEL[day.closure.kind]}</small>;
+  if (!day.open) return <small>Closed</small>;
+  if (isClassDay(day)) return <small>Class day</small>;
+  return day.level ? <small className={`lab-level lab-level-${day.level}`}>{LEVEL_LABEL[day.level]}</small> : null;
+}
+
 /** Admin without a student enrolment: what students see, read-only (no booking — bookings belong to a student enrolment). */
 function AdminLabPreview() {
   const [calendar, setCalendar] = useState<LabCalendar | null>(null);
@@ -402,18 +420,17 @@ function AdminLabPreview() {
           Admin preview: this is the calendar students see. Booking needs a student account. Manage Macs, hours and closures in <Link to="/admin/lab">Admin › Lab</Link>.
         </p>
         {error ? <p role="alert" className="error">{error}</p> : null}
-        {calendar ? <p className="muted">{calendar.capacity} {calendar.capacity === 1 ? 'Mac' : 'Macs'} in service.</p> : null}
+        {calendar && calendar.capacity !== null ? <p className="muted">{calendar.capacity} {calendar.capacity === 1 ? 'Mac' : 'Macs'} in service.</p> : null}
       </div>
       {calendar ? (
         <div className="card stack">
           <h2>Calendar</h2>
           <div className="lab-days" role="group" aria-label="Day">
             {days.map((d) => {
-              const sub = d.closure ? CLOSURE_LABEL[d.closure.kind] : d.open ? null : 'Closed';
               return (
                 <button key={d.date} type="button" className={`lab-day${d.open ? '' : ' lab-day-closed'}`} aria-pressed={d.date === activeDay} onClick={() => setDay(d.date)}>
                   <span>{fmtDay(d.date)}</span>
-                  {sub ? <small>{sub}</small> : null}
+                  <DayChip day={d} />
                 </button>
               );
             })}
@@ -428,14 +445,17 @@ function AdminLabPreview() {
             <ul className="lab-slots" aria-label={`Slots on ${fmtDay(dayData.date)}`}>
               {dayData.slots.map((s) => {
                 const past = Date.parse(s.start) <= now;
-                const left = Math.max(0, calendar.capacity - s.booked);
                 return (
                   <li key={s.start}>
-                    <div className={`lab-slot${past || s.full ? ' lab-slot-off' : ''}`}>
+                    <div className={`lab-slot${past || s.full || s.blocked ? ' lab-slot-off' : ''}`}>
                       <span className="lab-slot-time">{fmtTime(s.start)} to {fmtTime(s.end)}</span>
-                      <span className={`lab-slot-status${s.full || past ? ' muted' : ''}`}>
-                        {past ? 'Past' : s.full ? 'Full' : `${left} of ${calendar.capacity} free`}
-                      </span>
+                      {s.blocked ? (
+                        <span className="lab-slot-status muted">{blockText(dayData.block_until) ?? 'Class'}</span>
+                      ) : past ? (
+                        <span className="lab-slot-status muted">Past</span>
+                      ) : s.level ? (
+                        <span className={`lab-level lab-level-${s.level}`}>{LEVEL_LABEL[s.level]}</span>
+                      ) : null}
                     </div>
                   </li>
                 );

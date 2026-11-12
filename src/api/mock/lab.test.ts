@@ -4,6 +4,8 @@ import { resetMockAuth } from './auth';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT } from './fixtures/s1';
 import { mockSetBookingStatus } from './lab';
 import { mockSetGroup } from './survey';
+import { resetMockSessions, setSessionRows, type MockSessionRow } from './sessionStore';
+import { labLevel } from './lab';
 
 // Monday 2026-11-09 10:00 Colombo: cycle 1 (2026-11-07 .. 2026-11-20).
 const NOW = new Date('2026-11-09T10:00:00+05:30');
@@ -21,12 +23,21 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
   resetMockAuth();
+  setSessionRows([]);
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  resetMockSessions();
+});
+
+const session = (date: string, until: string | null): MockSessionRow => ({
+  id: `s-${date}-${until}`, cohort_id: C, date, start_time: '09:00', end_time: '12:00', title: 'Fictional class',
+  group_nos: [1], deliverables: [], lab_block_until: until, content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+});
 
 describe('mock lab calendar', () => {
-  it('lists Colombo slots, capacity, closures and seats taken', async () => {
-    await signIn(5);
+  it('lists Colombo slots, capacity, closures and seats taken (staff numbers)', async () => {
+    await api.verifyEmailCode('instructor001@example.edu', '123456');
     const r = await api.getLabCalendar('2026-11-09', '2026-11-16');
     if (!r.ok) throw new Error();
     expect(r.data.capacity).toBe(12); // 13 Macs, one out of service
@@ -41,6 +52,39 @@ describe('mock lab calendar', () => {
     const tue = days.get('2026-11-10')!;
     expect(tue.slots.find((s) => s.start === slot('2026-11-10', 10))).toMatchObject({ booked: 12, full: true });
     expect(tue.slots.find((s) => s.start === slot('2026-11-10', 14))).toMatchObject({ booked: 5, full: false });
+  });
+
+  it('computes levels at the thresholds', () => {
+    expect([labLevel(0, 12), labLevel(5, 12), labLevel(6, 12), labLevel(9, 12), labLevel(10, 12), labLevel(11, 12), labLevel(12, 12), labLevel(0, 0)])
+      .toEqual(['quiet', 'quiet', 'filling', 'filling', 'almost_full', 'almost_full', 'full', 'full']);
+  });
+
+  it('hides numbers from students and shows levels', async () => {
+    await signIn(5);
+    const r = await api.getLabCalendar('2026-11-10', '2026-11-10');
+    if (!r.ok) throw new Error();
+    expect(r.data.capacity).toBeNull();
+    const d = r.data.days[0]!;
+    expect(d).toMatchObject({ booked: null, slot_capacity: null, level: 'quiet' });
+    expect(d.slots.find((s) => s.start === slot('2026-11-10', 10))).toMatchObject({ booked: null, level: 'full', full: true, blocked: false });
+    expect(d.slots.find((s) => s.start === slot('2026-11-10', 14))).toMatchObject({ booked: null, level: 'quiet' });
+  });
+
+  it('blocks slots before the session block and sums only unblocked slots', async () => {
+    setSessionRows([session('2026-11-10', '13:30'), session('2026-11-11', '24:00')]);
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    const r = await api.getLabCalendar('2026-11-10', '2026-11-11');
+    if (!r.ok) throw new Error();
+    const [tue, wed] = r.data.days;
+    expect(tue!.block_until).toBe('13:30');
+    expect(tue!.slots.filter((s) => s.blocked).map((s) => s.start.slice(11, 13))).toEqual(['09', '10', '11', '12', '13']);
+    expect(tue!.slots.find((s) => s.blocked)).toMatchObject({ level: null, full: false });
+    expect(tue!.slot_capacity).toBe(12 * 5);
+    expect(wed).toMatchObject({ block_until: '24:00', level: null, booked: 0, slot_capacity: 0 });
+    await signIn(5);
+    const res = await api.bookSlots(C, [slot('2026-11-10', 12)]);
+    expect(res.ok ? 'ok' : res.error.code).toBe('slot_closed');
+    expect(code(await api.bookSlots(C, [slot('2026-11-10', 14)]))).toBe('ok');
   });
 
   it('rejects a bad range and signed-out callers', async () => {
@@ -97,7 +141,7 @@ describe('mock lab booking', () => {
     expect(lab.week.hours).toBe(2);
     expect(lab.needs_preferred_mac).toBe(true);
     const cal = await api.getLabCalendar('2026-11-10', '2026-11-10');
-    expect(cal.ok && cal.data.days[0]!.slots.find((s) => s.start === slot('2026-11-10', 15))!.booked).toBe(1);
+    expect(cal.ok && cal.data.days[0]!.slots.find((s) => s.start === slot('2026-11-10', 15))).toMatchObject({ booked: null, level: 'quiet' });
   });
 
   it('maps every error code with a slot_start hint', async () => {
@@ -383,5 +427,36 @@ describe('mock lab switch (lab_open)', () => {
     await setOpen(true);
     await signIn(5);
     expect(await myLab()).toMatchObject({ eligible: true, reason: null });
+  });
+});
+
+describe('mock closure ranges', () => {
+  it('adds a range, updates existing rows and deletes the whole range', async () => {
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    const add = await api.adminAddClosureRange({ from: '2026-11-16', to: '2026-11-18', kind: 'closed', reason: ' Fictional ' });
+    if (!add.ok) throw new Error();
+    expect(add.data).toMatchObject({ added: 3, updated: 0 });
+    const again = await api.adminAddClosureRange({ from: '2026-11-18', to: '2026-11-19', kind: 'closed', reason: null });
+    expect(again.ok && again.data).toMatchObject({ added: 1, updated: 1 });
+    expect(code(await api.adminAddClosureRange({ from: '2026-11-19', to: '2026-11-18', kind: 'closed', reason: null }))).toBe('invalid_input');
+    expect(code(await api.adminAddClosureRange({ from: '2026-01-01', to: '2027-01-02', kind: 'closed', reason: null }))).toBe('invalid_input');
+    const list = await api.listClosures('2026-11-16', '2026-11-19');
+    if (!list.ok || !again.ok) throw new Error();
+    expect(list.data.filter((c) => c.range_id === add.data.range_id)).toHaveLength(2);
+    const first = list.data.find((c) => c.date === '2026-11-16')!;
+    expect(first.reason).toBe('Fictional');
+    const del = await api.adminDeleteClosure(first.id, true);
+    expect(del).toEqual({ ok: true, data: { ok: true, deleted: 2 } });
+    const left = await api.listClosures('2026-11-16', '2026-11-19');
+    expect(left.ok && left.data.map((c) => c.date)).toEqual(['2026-11-18', '2026-11-19']);
+  });
+
+  it('applies instructor rules to ranges', async () => {
+    await api.verifyEmailCode('instructor001@example.edu', '123456');
+    expect(code(await api.adminAddClosureRange({ from: '2026-11-16', to: '2026-11-17', kind: 'holiday', reason: null }))).toBe('forbidden');
+    const ok = await api.adminAddClosureRange({ from: '2026-11-16', to: '2026-11-17', kind: 'closed', reason: null });
+    expect(ok.ok).toBe(true);
+    await signIn(5);
+    expect(code(await api.adminAddClosureRange({ from: '2026-11-16', to: '2026-11-17', kind: 'closed', reason: null }))).toBe('forbidden');
   });
 });

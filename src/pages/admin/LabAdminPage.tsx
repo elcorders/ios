@@ -4,13 +4,14 @@ import { api } from '../../api';
 import { messageFor } from '../../lib/errors';
 import { useAdmin } from './AdminContext';
 import './transfers/transfers.css';
+import { CalendarTab } from './lab/CalendarTab';
 import { MacsTab } from './lab/MacsTab';
 import { HoursTab } from './lab/HoursTab';
 import { ClosuresTab } from './lab/ClosuresTab';
 import { BookingsTab } from './lab/BookingsTab';
 import { CreditsTab } from './lab/CreditsTab';
 
-/** Admin › Lab: Macs, opening hours, closures, bookings and credits. */
+/** Admin › Lab: Calendar, Macs, opening hours, closures, bookings and credits. */
 export function LabAdminPage() {
   const { cohort, readOnly, reloadCohorts } = useAdmin();
   const [busy, setBusy] = useState(false);
@@ -38,6 +39,7 @@ export function LabAdminPage() {
       </div>
       {error ? <p role="alert" className="error">{error}</p> : null}
       <nav aria-label="Lab" className="subnav">
+        <NavLink to="/admin/lab/calendar">Calendar</NavLink>
         <NavLink to="/admin/lab/macs">Macs</NavLink>
         <NavLink to="/admin/lab/hours">Hours</NavLink>
         <NavLink to="/admin/lab/closures">Closures</NavLink>
@@ -45,7 +47,8 @@ export function LabAdminPage() {
         <NavLink to="/admin/lab/credits">Credits</NavLink>
       </nav>
       <Routes>
-        <Route index element={<Navigate to="macs" replace />} />
+        <Route index element={<Navigate to="calendar" replace />} />
+        <Route path="calendar" element={<CalendarTab />} />
         <Route path="macs" element={<MacsTab />} />
         <Route path="hours" element={<HoursTab />} />
         <Route path="closures" element={<ClosuresTab />} />

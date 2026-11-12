@@ -1,4 +1,4 @@
-import type { Closure, LabHours, Mac, S3Api } from '../types';
+import type { Closure, LabHours, Mac, S13Api, S3Api } from '../types';
 import { getSupabase } from './client';
 import { fail, internalError, mapPostgrestError, ok } from './errors';
 import { callRpc } from './rpc';
@@ -22,7 +22,7 @@ async function select<T>(run: () => PromiseLike<{ data: unknown; error: { code?:
 }
 
 /** S3 lab methods (CONTRACT.md §S3). */
-export const labMethods: S3Api = {
+export const labMethods: S3Api & S13Api = {
   getLabCalendar: (from, to) => callRpc('get_lab_calendar', { p_from: from, p_to: to }),
   getMyLab: (cohortId) => callRpc('get_my_lab', { p_cohort_id: cohortId }),
   bookSlots: (cohortId, slotStarts) => callRpc('book_slots', { p_cohort_id: cohortId, p_slot_starts: slotStarts }),
@@ -49,12 +49,15 @@ export const labMethods: S3Api = {
     select<Closure[]>(() =>
       getSupabase()
         .from('lab_closures')
-        .select('id, date, kind, reason, created_by, created_at')
+        .select('id, date, kind, reason, range_id, created_by, created_at')
         .gte('date', from)
         .lte('date', to)
         .order('date')),
   adminAddClosures: (items) => callRpc('admin_add_closures', { p_items: items }),
-  adminDeleteClosure: (id) => callRpc('admin_delete_closure', { p_id: id }),
+  adminAddClosureRange: (r) =>
+    callRpc('admin_add_closure_range', { p_from: r.from, p_to: r.to, p_kind: r.kind, p_reason: r.reason }),
+  adminDeleteClosure: (id, wholeRange = false) =>
+    callRpc('admin_delete_closure', { p_id: id, p_whole_range: wholeRange }),
 
   adminListLabBookings: (from, to) => callRpc('admin_list_lab_bookings', { p_from: from, p_to: to }),
   adminLabCredits: (cohortId) => callRpc('admin_lab_credits', { p_cohort_id: cohortId }),

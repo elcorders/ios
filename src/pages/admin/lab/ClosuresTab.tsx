@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../api';
 import type { Closure, ClosureKind } from '../../../api/types';
 import { messageFor } from '../../../lib/errors';
+import { formatColombo } from '../../../lib/time';
 import { Dialog } from '../Dialog';
 import { KIND_BLOCKS, KIND_LABELS, addDaysIso, colomboToday, isValidDate, parseClosureLines } from './labHelpers';
 import '../table/table.css';
+
+const fmtShort = (d: string) => formatColombo(`${d}T12:00:00+05:30`, { day: '2-digit', month: 'short' });
 
 export function ClosuresTab() {
   const today = useMemo(() => colomboToday(), []);
@@ -13,6 +16,7 @@ export function ClosuresTab() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Closure | null>(null);
+  const [deletingRange, setDeletingRange] = useState<Closure | null>(null);
 
   const load = useCallback(async () => {
     const res = past ? await api.listClosures(addDaysIso(today, -730), addDaysIso(today, -1)) : await api.listClosures(today, addDaysIso(today, 730));
@@ -36,6 +40,22 @@ export function ClosuresTab() {
     } else setError(messageFor(res.error));
   };
 
+  const rangeSpan = (c: Closure): { first: string; last: string } | null => {
+    if (!c.range_id) return null;
+    const dates = (rows ?? []).filter((r) => r.range_id === c.range_id).map((r) => r.date).sort();
+    return dates.length ? { first: dates[0]!, last: dates[dates.length - 1]! } : null;
+  };
+
+  const removeRange = async () => {
+    if (!deletingRange) return;
+    const res = await api.adminDeleteClosure(deletingRange.id, true);
+    setDeletingRange(null);
+    if (res.ok) {
+      setNotice(`Range deleted (${res.data.deleted} days).`);
+      await load();
+    } else setError(messageFor(res.error));
+  };
+
   return (
     <div className="stack">
       <h3>Closures</h3>
@@ -52,6 +72,8 @@ export function ClosuresTab() {
           rows={rows ? rows.filter((c) => c.kind === blk.kind) : null}
           past={past}
           onDelete={setDeleting}
+          onDeleteRange={setDeletingRange}
+          rangeSpan={rangeSpan}
           onDone={(m) => { setNotice(m); void load(); }}
         />
       ))}
@@ -60,12 +82,21 @@ export function ClosuresTab() {
           <p>Delete the {KIND_LABELS[deleting.kind].toLowerCase()} on {deleting.date}?</p>
         </Dialog>
       ) : null}
+      {deletingRange ? (
+        <Dialog title="Delete range" submitLabel="Delete range" onCancel={() => setDeletingRange(null)} onSubmit={() => void removeRange()}>
+          <p>
+            Delete every {KIND_LABELS[deletingRange.kind].toLowerCase()} in the range
+            {rangeSpan(deletingRange) ? ` ${fmtShort(rangeSpan(deletingRange)!.first)} – ${fmtShort(rangeSpan(deletingRange)!.last)}` : ''}?
+          </p>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
 
-function KindBlock({ kind, rows, past, onDelete, onDone }: {
-  kind: ClosureKind; rows: Closure[] | null; past: boolean; onDelete: (c: Closure) => void; onDone: (msg: string) => void;
+function KindBlock({ kind, rows, past, onDelete, onDeleteRange, rangeSpan, onDone }: {
+  kind: ClosureKind; rows: Closure[] | null; past: boolean; onDelete: (c: Closure) => void; onDeleteRange: (c: Closure) => void;
+  rangeSpan: (c: Closure) => { first: string; last: string } | null; onDone: (msg: string) => void;
 }) {
   const blk = KIND_BLOCKS.find((b) => b.kind === kind)!;
   const when = past ? 'past' : 'upcoming';
@@ -83,9 +114,17 @@ function KindBlock({ kind, rows, past, onDelete, onDone }: {
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td className="c-name">{c.date}</td>
-                  <td className="c-wide">{c.reason ?? ''}</td>
+                  <td className="c-wide">
+                    {c.reason ?? ''}
+                    {rangeSpan(c) ? (
+                      <small className="muted"> part of range {fmtShort(rangeSpan(c)!.first)} – {fmtShort(rangeSpan(c)!.last)}</small>
+                    ) : null}
+                  </td>
                   <td className="c-actions">
                     <button type="button" aria-label={`Delete ${blk.single} ${c.date}`} onClick={() => onDelete(c)}>Delete</button>
+                    {c.range_id ? (
+                      <button type="button" aria-label={`Delete range of ${blk.single} ${c.date}`} onClick={() => onDeleteRange(c)}>Delete range</button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -102,16 +141,23 @@ function KindBlock({ kind, rows, past, onDelete, onDone }: {
 
 function AddOne({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) => void }) {
   const blk = KIND_BLOCKS.find((b) => b.kind === kind)!;
-  const [date, setDate] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
-    if (!isValidDate(date)) return setError('Choose a date.');
-    const res = await api.adminAddClosures([{ date, kind, reason: reason.trim() || null }]);
+    if (!isValidDate(from)) return setError('Choose a From date.');
+    if (to && !isValidDate(to)) return setError('Choose a valid To date.');
+    if (to && to < from) return setError('To must be on or after From.');
+    const text = reason.trim() || null;
+    const res = !to || to === from
+      ? await api.adminAddClosures([{ date: from, kind, reason: text }])
+      : await api.adminAddClosureRange({ from, to, kind, reason: text });
     if (res.ok) {
       setError(null);
-      setDate('');
+      setFrom('');
+      setTo('');
       setReason('');
       onDone(`Added ${res.data.added}, updated ${res.data.updated}.`);
     } else setError(messageFor(res.error));
@@ -119,8 +165,9 @@ function AddOne({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) => 
 
   return (
     <form className="card stack" aria-label={`Add ${blk.single}`} onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-      <h5>Add one</h5>
-      <div className="field"><label htmlFor={`cl-date-${kind}`}>Date ({blk.single})</label><input id={`cl-date-${kind}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+      <h5>Add one day or a range</h5>
+      <div className="field"><label htmlFor={`cl-from-${kind}`}>From ({blk.single})</label><input id={`cl-from-${kind}`} type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+      <div className="field"><label htmlFor={`cl-to-${kind}`}>To ({blk.single}, optional)</label><input id={`cl-to-${kind}`} type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
       <div className="field"><label htmlFor={`cl-reason-${kind}`}>Reason ({blk.single})</label><input id={`cl-reason-${kind}`} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
       {error ? <p role="alert" className="error">{error}</p> : null}
       <div className="row"><button type="submit">Add {blk.single}</button></div>

@@ -9,7 +9,7 @@ test('admin Lab: paste a closure, take a Mac out of service, adjust credits', as
   await page.getByRole('button', { name: 'Verify code' }).click();
   await expect(page.getByText('admin@example.edu')).toBeVisible();
 
-  await page.goto('/#/admin/lab');
+  await page.goto('/#/admin/lab/macs');
   await expect(page.getByRole('table', { name: 'Lab Macs' })).toBeVisible();
   await page.getByRole('button', { name: 'Take Mac 1 out of service' }).click();
   await expect(page.getByRole('button', { name: 'Return Mac 1 to service' })).toBeVisible();
