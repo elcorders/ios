@@ -155,6 +155,123 @@ export type Database = {
           },
         ]
       }
+      class_session_content: {
+        Row: {
+          content_id: string
+          session_id: string
+        }
+        Insert: {
+          content_id: string
+          session_id: string
+        }
+        Update: {
+          content_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_session_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_content_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_session_groups: {
+        Row: {
+          group_id: string
+          session_id: string
+        }
+        Insert: {
+          group_id: string
+          session_id: string
+        }
+        Update: {
+          group_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_session_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_groups_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_sessions: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          date: string
+          deliverables: string[]
+          end_time: string
+          id: string
+          lab_block_until: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          created_by?: string | null
+          date: string
+          deliverables?: string[]
+          end_time: string
+          id?: string
+          lab_block_until?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          deliverables?: string[]
+          end_time?: string
+          id?: string
+          lab_block_until?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_sessions_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohort_secrets: {
         Row: {
           cohort_id: string
@@ -495,6 +612,7 @@ export type Database = {
           date: string
           id: string
           kind: Database["public"]["Enums"]["closure_kind"]
+          range_id: string | null
           reason: string | null
         }
         Insert: {
@@ -503,6 +621,7 @@ export type Database = {
           date: string
           id?: string
           kind: Database["public"]["Enums"]["closure_kind"]
+          range_id?: string | null
           reason?: string | null
         }
         Update: {
@@ -511,6 +630,7 @@ export type Database = {
           date?: string
           id?: string
           kind?: Database["public"]["Enums"]["closure_kind"]
+          range_id?: string | null
           reason?: string | null
         }
         Relationships: [
@@ -729,6 +849,103 @@ export type Database = {
           whatsapp_opt_in?: boolean
         }
         Relationships: []
+      }
+      push_outbox: {
+        Row: {
+          attempts: number
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          last_error: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["outbox_status"]
+          title: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          created_at?: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["outbox_status"]
+          title: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["outbox_status"]
+          title?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          failures: number
+          id: string
+          last_seen_at: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          failures?: number
+          id?: string
+          last_seen_at?: string
+          last_success_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          failures?: number
+          id?: string
+          last_seen_at?: string
+          last_success_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       survey_responses: {
         Row: {
@@ -954,6 +1171,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_closure_range: {
+        Args: {
+          p_from: string
+          p_kind: Database["public"]["Enums"]["closure_kind"]
+          p_reason?: string
+          p_to: string
+        }
+        Returns: Json
+      }
       admin_add_closures: { Args: { p_items: Json }; Returns: Json }
       admin_adjust_credits: {
         Args: { p_amount: number; p_enrolment_id: string; p_reason: string }
@@ -980,10 +1206,18 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_delete_closure: { Args: { p_id: string }; Returns: Json }
+      admin_delete_class_session: { Args: { p_id: string }; Returns: Json }
+      admin_delete_closure: {
+        Args: { p_id: string; p_whole_range?: boolean }
+        Returns: Json
+      }
       admin_delete_content: { Args: { p_id: string }; Returns: Json }
       admin_get_content: { Args: { p_id: string }; Returns: Json }
       admin_lab_credits: { Args: { p_cohort_id: string }; Returns: Json[] }
+      admin_list_class_sessions: {
+        Args: { p_cohort_id: string }
+        Returns: Json
+      }
       admin_list_cohorts: { Args: never; Returns: Json[] }
       admin_list_content: {
         Args: {
@@ -1009,6 +1243,8 @@ export type Database = {
         Args: { p_enrolment_id: string; p_group_no: number; p_note?: string }
         Returns: Json
       }
+      admin_push_stats: { Args: never; Returns: Json }
+      admin_push_test: { Args: never; Returns: Json }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }
       admin_reset_survey: {
         Args: { p_cohort_id: string; p_enrolment_ids: string[] }
@@ -1049,6 +1285,21 @@ export type Database = {
           p_lms_username: string
           p_phone: string
           p_user_id: string
+        }
+        Returns: Json
+      }
+      admin_upsert_class_session: {
+        Args: {
+          p_cohort_id: string
+          p_content_ids: string[]
+          p_date: string
+          p_deliverables: string[]
+          p_end_time: string
+          p_group_nos: number[]
+          p_id: string
+          p_lab_block_until: string
+          p_start_time: string
+          p_title: string
         }
         Returns: Json
       }
@@ -1117,6 +1368,57 @@ export type Database = {
         Returns: Json
       }
       cancel_transfer: { Args: { p_request_id: string }; Returns: Json }
+      class_hhmm: { Args: { p_t: string }; Returns: string }
+      class_parse_time: {
+        Args: { p_allow_24?: boolean; p_text: string }
+        Returns: string
+      }
+      class_session_admin_json: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: Json
+      }
+      class_session_audit_json: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: Json
+      }
+      class_session_end: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: string
+      }
+      class_session_group_nos: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: Json
+      }
+      class_session_my_json: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: Json
+      }
+      class_session_start: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: string
+      }
+      class_sessions_for: {
+        Args: { p_all: boolean; p_cohort_id: string; p_group_id: string }
+        Returns: {
+          cohort_id: string
+          created_at: string
+          created_by: string | null
+          date: string
+          deliverables: string[]
+          end_time: string
+          id: string
+          lab_block_until: string | null
+          start_time: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "class_sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cohort_json: {
         Args: { c: Database["public"]["Tables"]["cohorts"]["Row"] }
         Returns: Json
@@ -1137,6 +1439,12 @@ export type Database = {
         Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
         Returns: boolean
       }
+      content_visible_from: {
+        Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
+        Returns: string
+      }
+      delete_push_subscription: { Args: { p_endpoint: string }; Returns: Json }
+      deliverables_ok: { Args: { p_items: string[] }; Returns: boolean }
       email_change_check: {
         Args: { p_email: string; p_user_id: string }
         Returns: Json
@@ -1156,6 +1464,8 @@ export type Database = {
       }
       get_me: { Args: never; Returns: Json }
       get_my_lab: { Args: { p_cohort_id: string }; Returns: Json }
+      get_my_push: { Args: never; Returns: Json }
+      get_my_sessions: { Args: { p_cohort_id: string }; Returns: Json }
       get_my_transfers: { Args: { p_cohort_id: string }; Returns: Json }
       has_active_enrolment: { Args: never; Returns: boolean }
       has_role: {
@@ -1169,6 +1479,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_member: { Args: { p_cohort_id: string }; Returns: boolean }
       iso_colombo: { Args: { p_ts: string }; Returns: string }
+      lab_block_until: { Args: { p_date: string }; Returns: string }
       lab_booked: { Args: { p_slot: string }; Returns: number }
       lab_booking_json: {
         Args: { b: Database["public"]["Tables"]["bookings"]["Row"] }
@@ -1216,11 +1527,13 @@ export type Database = {
       }
       lab_day_ts: { Args: { p_date: string }; Returns: string }
       lab_is_suspended: { Args: { p_enrolment_id: string }; Returns: boolean }
+      lab_level: { Args: { booked: number; capacity: number }; Returns: string }
       lab_no_show_streak: {
         Args: { p_enrolment_id: string; p_since?: string }
         Returns: number
       }
       lab_reason: { Args: { p_enrolment_id: string }; Returns: string }
+      lab_slot_blocked: { Args: { p_slot: string }; Returns: boolean }
       lab_slot_date: { Args: { p_ts: string }; Returns: string }
       lab_slot_open: { Args: { p_slot: string }; Returns: boolean }
       lab_suggestions: {
@@ -1326,6 +1639,42 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: Json
       }
+      push_claim: {
+        Args: { p_limit: number }
+        Returns: {
+          attempts: number
+          body: string
+          id: string
+          kind: string
+          subscriptions: Json
+          title: string
+          url: string
+          user_id: string
+        }[]
+      }
+      push_enqueue: {
+        Args: {
+          p_body: string
+          p_kind: string
+          p_title: string
+          p_url: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      push_mark: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_status: Database["public"]["Enums"]["outbox_status"]
+        }
+        Returns: Json
+      }
+      push_pending_count: { Args: never; Returns: number }
+      push_subscription_result: {
+        Args: { p_gone: boolean; p_id: string; p_ok: boolean }
+        Returns: Json
+      }
       request_transfer: {
         Args: {
           p_cohort_id: string
@@ -1358,6 +1707,15 @@ export type Database = {
       roster_match_user: {
         Args: { p_email: string; p_index_no: string }
         Returns: string
+      }
+      save_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent?: string
+        }
+        Returns: Json
       }
       security_summary: { Args: { p_user_id: string }; Returns: Json }
       set_preferred_mac: {
@@ -1417,7 +1775,7 @@ export type Database = {
         | "no_show"
       closure_kind: "holiday" | "closed" | "class_day"
       cohort_status: "active" | "archived"
-      content_kind: "resource" | "tutorial"
+      content_kind: "resource" | "tutorial" | "material"
       credit_adjustment_kind: "admin"
       enrolment_role: "student" | "instructor"
       enrolment_status: "active" | "removed" | "discarded"
@@ -1579,7 +1937,7 @@ export const Constants = {
       ],
       closure_kind: ["holiday", "closed", "class_day"],
       cohort_status: ["active", "archived"],
-      content_kind: ["resource", "tutorial"],
+      content_kind: ["resource", "tutorial", "material"],
       credit_adjustment_kind: ["admin"],
       enrolment_role: ["student", "instructor"],
       enrolment_status: ["active", "removed", "discarded"],

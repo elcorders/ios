@@ -30,7 +30,7 @@ export function isStandalone(): boolean {
 }
 
 export function registerServiceWorker(): void {
-  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+  if (!(import.meta.env.PROD || import.meta.env.VITE_SW_DEV === 'on') || !('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       // installability is optional; the site works without it
