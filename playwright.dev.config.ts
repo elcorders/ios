@@ -18,6 +18,7 @@ export default defineConfig({
     command: 'env -u DEV_SECRET_KEY -u DEV_DB_URL npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: false,
-    env: { VITE_API: 'supabase' },
+    // VITE_SW_DEV off: the dev service worker (for local push tests) is not part of the e2e runs.
+    env: { VITE_API: 'supabase', VITE_SW_DEV: 'off' },
   },
 });

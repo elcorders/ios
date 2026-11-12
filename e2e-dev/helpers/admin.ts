@@ -77,6 +77,9 @@ export async function cleanup(): Promise<void> {
   // S6: content created by e2e specs is titled "E2E …".
   const c = await sb.from('content_items').delete().like('title', 'E2E %');
   if (c.error) throw new Error(`content cleanup: ${c.error.message}`);
+  // S14: class sessions created by e2e specs are titled "E2E …" (links cascade).
+  const cs = await sb.from('class_sessions').delete().like('title', 'E2E %');
+  if (cs.error) throw new Error(`class session cleanup: ${cs.error.message}`);
   for (let page = 1; page < 50; page++) {
     const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw new Error(`listUsers: ${error.message}`);

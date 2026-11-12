@@ -19,9 +19,9 @@ test('admin Lab on ios-dev: closure paste + delete, Mac out of service, bookings
   await addPasskeyOnSetup(s);
   const asStudent = userClient(await accessTokenOf(s));
   const cal = await asStudent.rpc('get_lab_calendar', { p_from: colomboDate(1), p_to: colomboDate(14) });
-  const day = (cal.data as { days: { date: string; slots: { start: string; full: boolean }[] }[] }).days
-    .find((d) => d.slots.some((x) => !x.full))!;
-  const slot = day.slots.find((x) => !x.full)!.start;
+  const day = (cal.data as { days: { date: string; slots: { start: string; full: boolean; blocked: boolean }[] }[] }).days
+    .find((d) => d.slots.some((x) => !x.full && !x.blocked))!;
+  const slot = day.slots.find((x) => !x.full && !x.blocked)!.start;
   const booked = await asStudent.rpc('book_slots', { p_cohort_id: cohort, p_slot_starts: [slot] });
   expect(booked.error).toBeNull();
 
@@ -33,11 +33,12 @@ test('admin Lab on ios-dev: closure paste + delete, Mac out of service, bookings
   await signInWithEmailCode(page, admin.email);
   await addPasskeyOnSetup(page);
 
-  // Macs: take Mac 13 out of service -> capacity drops; put it back.
+  // Macs: take Mac 13 out of service -> capacity drops; put it back. Capacity numbers are staff-only (§S13).
+  const asAdmin = userClient(await accessTokenOf(page));
   const capOf = async () =>
-    ((await asStudent.rpc('get_lab_calendar', { p_from: colomboDate(1), p_to: colomboDate(1) })).data as { capacity: number }).capacity;
+    ((await asAdmin.rpc('get_lab_calendar', { p_from: colomboDate(1), p_to: colomboDate(1) })).data as { capacity: number }).capacity;
   const cap0 = await capOf();
-  await page.goto('/#/admin/lab');
+  await page.goto('/#/admin/lab/macs');
   await expect(page.getByRole('table', { name: 'Lab Macs' })).toBeVisible();
   try {
     await page.getByRole('button', { name: 'Take Mac 13 out of service' }).click();
