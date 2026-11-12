@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
-import type { AdminCohort, AdminContentRow, ContentKind } from '../../api/types';
+import type { AdminCohort, AdminContentRow, ContentKind, LibraryDetail } from '../../api/types';
 import { colomboLocalToIso, isoToColomboLocal } from '../../lib/colomboLocal';
 import { formatColombo } from '../../lib/time';
 import { useAdmin } from './AdminContext';
@@ -8,6 +8,9 @@ import { Dialog } from './Dialog';
 import {
   contentError, formatSize, FRAME_NAV_WARNING, hasFrameNavigation, MAX_HTML_BYTES, readFileText, statusLabel, titleFromHtml,
 } from './contentHelpers';
+import { LibraryView } from './content/LibraryView';
+import { UpdatePrompt } from './content/UpdatePrompt';
+import { VersionDialog } from './content/VersionDialog';
 import './content.css';
 
 type Dlg =
@@ -15,7 +18,9 @@ type Dlg =
   | { type: 'schedule'; row: AdminContentRow }
   | { type: 'delete'; row: AdminContentRow }
   | { type: 'preview'; row: AdminContentRow }
-  | { type: 'copy' };
+  | { type: 'copy' }
+  | { type: 'version'; row: AdminContentRow }
+  | { type: 'prompt'; detail: LibraryDetail; versionNo: number; contentId: string };
 
 /**
  * "Publish now": a minute in the past, so a browser clock slightly ahead of the server
@@ -25,8 +30,24 @@ export const publishNowIso = (): string => new Date(Date.now() - 60_000).toISOSt
 
 export function ContentPage() {
   const { cohort, cohorts, readOnly, reloadCohorts } = useAdmin();
+  const [view, setView] = useState<'cohort' | 'library'>('cohort');
+  const toggle = (
+    <div className="content-tabs" role="group" aria-label="Content view">
+      <button type="button" aria-pressed={view === 'cohort'} onClick={() => setView('cohort')}>By cohort</button>
+      <button type="button" aria-pressed={view === 'library'} onClick={() => setView('library')}>Library</button>
+    </div>
+  );
+  if (view === 'library') {
+    return (
+      <div className="stack-lg">
+        {toggle}
+        <LibraryView cohorts={cohorts} />
+      </div>
+    );
+  }
   return (
     <div className="stack-lg">
+      {toggle}
       <ContentSection
         key={`t-${cohort.id}`}
         kind="tutorial"
@@ -99,13 +120,27 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
     await load();
   };
 
+  /** After Edit: when the file made a new version and other cohorts link the item, offer to update them. */
+  const afterEdit = async (before: AdminContentRow | null, saved: AdminContentRow) => {
+    if (before && saved.library_id && saved.version_no !== before.version_no && saved.link_count > 1) {
+      const lib = await api.adminGetLibrary(saved.library_id);
+      if (lib.ok && saved.version_no !== null) {
+        setNotice(`Saved. New version v${saved.version_no}.`);
+        setDlg({ type: 'prompt', detail: lib.data, versionNo: saved.version_no, contentId: saved.id });
+        await load();
+        return;
+      }
+    }
+    await done(before ? 'Saved.' : 'Added as a draft.');
+  };
+
   return (
     <section className="card content-section" aria-label={heading}>
       <header>
         <h2>{heading}</h2>
         <div className="content-actions">
           {isTut && !readOnly ? (
-            <button type="button" onClick={() => setDlg({ type: 'copy' })}>Copy from another cohort</button>
+            <button type="button" onClick={() => setDlg({ type: 'copy' })}>Link tutorials from another cohort</button>
           ) : null}
           {!readOnly ? <button type="button" onClick={() => setDlg({ type: 'edit', row: null })}>Add {noun}</button> : null}
         </div>
@@ -131,6 +166,13 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                   <td className="content-title">
                     {r.title}
                     {r.summary ? <small>{r.summary}</small> : null}
+                    {r.version_no !== null ? (
+                      <small className="content-version">
+                        v{r.version_no}
+                        {r.latest_version_no !== null && r.version_no < r.latest_version_no ? ` · v${r.latest_version_no} available` : ''}
+                        {r.link_count > 1 ? ` · linked to ${r.link_count} cohorts` : ''}
+                      </small>
+                    ) : null}
                   </td>
                   <td className="c-status"><span className={`badge status-${r.status}`}>{statusLabel(r)}</span></td>
                   <td className="c-size">{formatSize(r.size_bytes)}</td>
@@ -140,6 +182,9 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                       {!readOnly ? (
                         <>
                           <button type="button" aria-label={`Edit ${r.title}`} onClick={() => setDlg({ type: 'edit', row: r })}>Edit</button>
+                          {r.library_id ? (
+                            <button type="button" aria-label={`Version of ${r.title}`} onClick={() => setDlg({ type: 'version', row: r })}>Version…</button>
+                          ) : null}
                           {r.status !== 'published' ? (
                             <button
                               type="button"
@@ -167,7 +212,7 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
         </div>
       )}
       {dlg?.type === 'edit' ? (
-        <EditDialog kind={kind} cohortId={cohortId} row={dlg.row} onCancel={() => setDlg(null)} onDone={() => done(dlg.row ? 'Saved.' : 'Added as a draft.')} />
+        <EditDialog kind={kind} cohortId={cohortId} row={dlg.row} onCancel={() => setDlg(null)} onDone={(saved) => afterEdit(dlg.row, saved)} />
       ) : null}
       {dlg?.type === 'schedule' ? (
         <ScheduleDialog row={dlg.row} onCancel={() => setDlg(null)} onDone={() => done(`Scheduled “${dlg.row.title}”.`)} />
@@ -177,7 +222,11 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
       ) : null}
       {dlg?.type === 'preview' ? <PreviewDialog row={dlg.row} onClose={() => setDlg(null)} /> : null}
       {dlg?.type === 'copy' ? (
-        <CopyDialog cohort={cohort} cohorts={cohorts} onCancel={() => setDlg(null)} onDone={(n) => done(`Copied ${n} as drafts`)} />
+        <CopyDialog cohort={cohort} cohorts={cohorts} onCancel={() => setDlg(null)} onDone={(n) => done(`Linked ${n} as drafts`)} />
+      ) : null}
+      {dlg?.type === 'version' ? <VersionDialog row={dlg.row} onCancel={() => setDlg(null)} onDone={(m) => void done(m)} /> : null}
+      {dlg?.type === 'prompt' ? (
+        <UpdatePrompt detail={dlg.detail} versionNo={dlg.versionNo} excludeContentId={dlg.contentId} onClose={(m) => void done(m)} />
       ) : null}
     </section>
   );
@@ -188,7 +237,7 @@ interface BaseProps {
 }
 
 function EditDialog({ kind, cohortId, row, onCancel, onDone }: BaseProps & {
-  kind: ContentKind; cohortId: string | null; row: AdminContentRow | null; onDone: () => Promise<void>;
+  kind: ContentKind; cohortId: string | null; row: AdminContentRow | null; onDone: (saved: AdminContentRow) => Promise<void>;
 }) {
   const [title, setTitle] = useState(row?.title ?? '');
   const [summary, setSummary] = useState(row?.summary ?? '');
@@ -219,7 +268,7 @@ function EditDialog({ kind, cohortId, row, onCancel, onDone }: BaseProps & {
       id: row?.id ?? null, kind, cohort_id: cohortId, title: title.trim(),
       summary: summary.trim() || null, position: pos, body_html: file?.text ?? null,
     });
-    if (res.ok) await onDone();
+    if (res.ok) await onDone(res.data);
     else {
       setError(contentError(res.error));
       setBusy(false);
@@ -307,7 +356,7 @@ function CopyDialog({ cohort, cohorts, onCancel, onDone }: BaseProps & {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async () => {
-    if (!from) return setError('Choose a cohort to copy from.');
+    if (!from) return setError('Choose a cohort to link from.');
     setBusy(true);
     const res = await api.adminCopyTutorials(from, cohort.id);
     if (res.ok) await onDone(res.data.copied);
@@ -317,14 +366,14 @@ function CopyDialog({ cohort, cohorts, onCancel, onDone }: BaseProps & {
     }
   };
   return (
-    <Dialog title="Copy tutorials" submitLabel="Copy" onCancel={onCancel} onSubmit={() => void submit()} busy={busy} error={error}>
+    <Dialog title="Link tutorials" submitLabel="Link" onCancel={onCancel} onSubmit={() => void submit()} busy={busy} error={error}>
       <div className="field">
-        <label htmlFor="ct-from">Copy from</label>
+        <label htmlFor="ct-from">Link from</label>
         <select id="ct-from" value={from} onChange={(e) => setFrom(e.target.value)}>
           {sources.map((c) => <option key={c.id} value={c.id}>{c.code} ({c.batch})</option>)}
         </select>
       </div>
-      <p>Tutorials from that cohort are copied into {cohort.code} as drafts. Nothing is published.</p>
+      <p>Tutorials from that cohort are linked into {cohort.code} as drafts: they share the same library item and version, they are not copied. Items already linked here are skipped. Nothing is published.</p>
     </Dialog>
   );
 }
