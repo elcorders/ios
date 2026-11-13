@@ -26,7 +26,9 @@ describe('admin classes tab', () => {
     open();
     await screen.findByRole('heading', { name: 'Classes — 25.2' });
     const upcoming = within(await screen.findByRole('region', { name: 'Upcoming classes' }));
-    expect(upcoming.getAllByRole('listitem', { name: /Tutorial 2/ })).toHaveLength(2);
+    expect(upcoming.getAllByRole('listitem', { name: /Tutorial 2/ })).toHaveLength(1);
+    expect(upcoming.getByText('09:00–12:00 · G1, G2, G3')).toBeInTheDocument();
+    expect(upcoming.getByText('13:00–16:00 · G4, G5, G6')).toBeInTheDocument();
     expect(upcoming.getByText('Progress review (fictional)')).toBeInTheDocument();
     expect(upcoming.getByText("Doesn't block the lab")).toBeInTheDocument();
     expect(upcoming.getByText('Lab blocked all day')).toBeInTheDocument();
@@ -44,8 +46,8 @@ describe('admin classes tab', () => {
     fireEvent.change(d.getByLabelText('Title'), { target: { value: 'Lab clinic' } });
     fireEvent.change(d.getByLabelText('Date'), { target: { value: '2099-02-03' } });
     fireEvent.click(d.getByRole('button', { name: 'Save' }));
-    expect(await d.findByRole('alert')).toHaveTextContent('at least one group');
-    fireEvent.click(d.getByLabelText('Group 2'));
+    expect(await d.findByRole('alert')).toHaveTextContent('Each slot needs at least one group.');
+    fireEvent.click(within(d.getByRole('group', { name: 'Slot 1' })).getByLabelText('G2'));
     fireEvent.change(d.getByLabelText(/Deliverables/), { target: { value: 'Item A\n\nItem B' } });
     fireEvent.change(d.getByLabelText('Lab block'), { target: { value: 'time' } });
     fireEvent.change(d.getByLabelText('Lab blocked until'), { target: { value: '14:30' } });
@@ -53,7 +55,7 @@ describe('admin classes tab', () => {
     fireEvent.click(d.getByLabelText(/Setup guide/));
     fireEvent.click(d.getByRole('button', { name: 'Save' }));
     const item = await screen.findByRole('listitem', { name: 'Lab clinic' });
-    expect(item).toHaveTextContent('Group 2');
+    expect(item).toHaveTextContent('09:00–12:00 · G2');
     expect(item).toHaveTextContent('2 deliverables');
     expect(item).toHaveTextContent('Lab blocked until 14:30');
     expect(item).toHaveTextContent(/Tutorial 3 — Draft · tutorial · on session/);
@@ -68,8 +70,9 @@ describe('admin classes tab', () => {
     fireEvent.change(d.getByLabelText('Title'), { target: { value: 'Bad' } });
     fireEvent.change(d.getByLabelText('Date'), { target: { value: '2099-02-03' } });
     fireEvent.change(d.getByLabelText('End'), { target: { value: '08:00' } });
+    fireEvent.click(d.getByLabelText('G1'));
     fireEvent.click(d.getByRole('button', { name: 'Save' }));
-    expect(await d.findByRole('alert')).toHaveTextContent('after the start');
+    expect(await d.findByRole('alert')).toHaveTextContent('End must be after start.');
   });
 
   it('edits a session and prefills the form', async () => {
@@ -79,10 +82,36 @@ describe('admin classes tab', () => {
     const d = within(dialog());
     expect(d.getByLabelText('Title')).toHaveValue('Progress review (fictional)');
     expect(d.getByLabelText('Lab block')).toHaveValue('none');
-    expect(d.getByLabelText('Group 6')).toBeChecked();
+    expect(d.getByLabelText('G6')).toBeChecked();
     fireEvent.change(d.getByLabelText('Title'), { target: { value: 'Review renamed' } });
     fireEvent.click(d.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('listitem', { name: 'Review renamed' })).toBeInTheDocument();
+  });
+
+  it('edits time slots: groups are exclusive, add up to 6, remove, and saves two slots', async () => {
+    open();
+    await screen.findByText('Progress review (fictional)');
+    fireEvent.click(screen.getByRole('button', { name: 'Add class' }));
+    const d = within(dialog());
+    expect(d.queryByRole('button', { name: /^Remove/ })).toBeNull();
+    fireEvent.change(d.getByLabelText('Title'), { target: { value: 'Two slots' } });
+    fireEvent.change(d.getByLabelText('Date'), { target: { value: '2099-02-03' } });
+    fireEvent.click(d.getByRole('button', { name: '+ Add slot' }));
+    const s1 = within(d.getByRole('group', { name: 'Slot 1' }));
+    const s2 = within(d.getByRole('group', { name: 'Slot 2' }));
+    fireEvent.click(s1.getByLabelText('G1'));
+    expect(s2.getByLabelText('G1')).toBeDisabled();
+    fireEvent.click(s2.getByLabelText('G2'));
+    expect(s1.getByLabelText('G2')).toBeDisabled();
+    fireEvent.change(s2.getByLabelText('Start'), { target: { value: '13:00' } });
+    fireEvent.change(s2.getByLabelText('End'), { target: { value: '16:00' } });
+    for (let n = 0; n < 4; n++) fireEvent.click(d.getByRole('button', { name: '+ Add slot' }));
+    expect(d.queryByRole('button', { name: '+ Add slot' })).toBeNull();
+    for (let n = 6; n > 2; n--) fireEvent.click(d.getByRole('button', { name: `Remove slot ${n}` }));
+    fireEvent.click(d.getByRole('button', { name: 'Save' }));
+    const item = await screen.findByRole('listitem', { name: 'Two slots' });
+    expect(item).toHaveTextContent('09:00–12:00 · G1');
+    expect(item).toHaveTextContent('13:00–16:00 · G2');
   });
 
   it('deletes after confirming', async () => {

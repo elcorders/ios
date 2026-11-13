@@ -6,8 +6,8 @@ export const sessionMethods: S14Api = {
   adminListClassSessions: (cohortId) => callRpc('admin_list_class_sessions', { p_cohort_id: cohortId }),
   adminUpsertClassSession: (i) =>
     callRpc('admin_upsert_class_session', {
-      p_id: i.id, p_cohort_id: i.cohort_id, p_date: i.date, p_start_time: i.start_time, p_end_time: i.end_time,
-      p_title: i.title, p_group_nos: i.group_nos, p_deliverables: i.deliverables,
+      p_id: i.id, p_cohort_id: i.cohort_id, p_date: i.date, p_start_time: null, p_end_time: null,
+      p_title: i.title, p_group_nos: null, p_slots: i.slots, p_deliverables: i.deliverables,
       p_lab_block_until: i.lab_block_until, p_content_ids: i.content_ids,
     }),
   adminDeleteClassSession: (id) => callRpc('admin_delete_class_session', { p_id: id }),

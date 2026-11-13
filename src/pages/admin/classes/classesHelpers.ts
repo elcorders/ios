@@ -24,6 +24,28 @@ export function labText(until: string | null): string {
   return `Lab blocked until ${until}`;
 }
 
+export const MAX_SLOTS = 6;
+
+export interface SlotDraft {
+  start: string;
+  end: string;
+  groups: number[];
+}
+
+export const newSlot = (): SlotDraft => ({ start: '09:00', end: '12:00', groups: [] });
+
+/** First validation problem of the slot drafts, or null. */
+export function slotsProblem(slots: SlotDraft[]): string | null {
+  if (slots.some((s) => !s.start || !s.end || s.start >= s.end)) return 'End must be after start.';
+  if (slots.some((s) => s.groups.length === 0)) return 'Each slot needs at least one group.';
+  return null;
+}
+
+/** One line per slot: "09:00–12:00 · G1, G2". */
+export function slotText(s: { start_time: string; end_time: string; group_nos: number[] }): string {
+  return `${s.start_time}–${s.end_time} · ${s.group_nos.map((g) => `G${g}`).join(', ')}`;
+}
+
 export function groupsText(nos: number[]): string {
   return nos.length ? `Group${nos.length > 1 ? 's' : ''} ${nos.join(', ')}` : 'No groups';
 }
@@ -32,7 +54,7 @@ export const isUpcoming = (s: ClassSession, now = Date.now()): boolean => Date.p
 
 const SPECIFIC: Record<string, string> = {
   cohort_archived: 'This cohort is archived, so its class sessions cannot be changed.',
-  invalid_input: 'Check the date, times (start before end), title, groups (at least one) and linked items.',
+  invalid_input: 'Check the date, title, time slots (start before end, each with at least one group, no group twice) and linked items.',
 };
 
 export function classesError(error: { code: string }): string {

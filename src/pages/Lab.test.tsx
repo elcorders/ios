@@ -94,8 +94,8 @@ describe('lab page: eligible student', () => {
 
   it('shows a level chip per day and never numbers', async () => {
     setSessionRows([{
-      id: 's1', cohort_id: C, date: '2026-11-11', start_time: '09:00', end_time: '12:00', title: 'Fictional class',
-      group_nos: [1], deliverables: [], lab_block_until: '24:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+      id: 's1', cohort_id: C, date: '2026-11-11', title: 'Fictional class',
+      slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [], lab_block_until: '24:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
     }]);
     open();
     const tue = await screen.findByRole('button', { name: /Tue 10 Nov/ });
@@ -107,8 +107,8 @@ describe('lab page: eligible student', () => {
 
   it('shows blocked slots as class time and cannot select them', async () => {
     setSessionRows([{
-      id: 's2', cohort_id: C, date: '2026-11-10', start_time: '09:00', end_time: '12:00', title: 'Fictional class',
-      group_nos: [1], deliverables: [], lab_block_until: '16:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+      id: 's2', cohort_id: C, date: '2026-11-10', title: 'Fictional class',
+      slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [], lab_block_until: '16:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
     }]);
     open();
     fireEvent.click(await screen.findByRole('button', { name: /Tue 10 Nov/ }));

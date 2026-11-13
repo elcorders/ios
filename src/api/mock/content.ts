@@ -132,7 +132,9 @@ export function ensureFixtureLinks(): void {
   }
 }
 
-const startOf = (r: MockSessionRow): number => Date.parse(`${r.date}T${r.start_time}:00+05:30`);
+const at = (r: MockSessionRow, time: string): number => Date.parse(`${r.date}T${time}:00+05:30`);
+/** S18: latest slot start of a session. */
+const lastStart = (r: MockSessionRow): number => Math.max(...r.slots.map((x) => at(r, x.start_time)));
 const linksOf = (id: string): MockSessionRow[] => {
   ensureFixtureLinks();
   return sessionRows().filter((r) => r.content_ids.includes(id));
@@ -154,15 +156,15 @@ function statusOf(i: MockItem): ContentStatus {
   const now = Date.now();
   if (i.published_at && Date.parse(i.published_at) <= now) return 'published';
   const links = hasSessions(i) ? linksOf(i.id) : [];
-  if (links.length > 0) return Math.max(...links.map(startOf)) <= now ? 'published' : 'on_session';
+  if (links.length > 0) return Math.max(...links.map(lastStart)) <= now ? 'published' : 'on_session';
   return i.published_at ? 'scheduled' : 'draft';
 }
 
-/** Earliest linked session start still in the future. */
+/** Earliest linked session slot start still in the future. */
 function releaseAt(i: MockItem): string | null {
   if (!hasSessions(i)) return null;
   const now = Date.now();
-  const future = linksOf(i.id).map(startOf).filter((t) => t > now);
+  const future = linksOf(i.id).flatMap((r) => r.slots.map((x) => at(r, x.start_time))).filter((t) => t > now);
   return future.length ? iso(Math.min(...future)) : null;
 }
 
@@ -179,11 +181,14 @@ function visibleFrom(i: MockItem): number | null {
   if (hasSessions(i)) {
     const links = linksOf(i.id).filter((r) => r.cohort_id === i.cohort_id);
     if (links.length) {
-      times.push(Math.max(...links.map(startOf)));
+      times.push(Math.max(...links.map(lastStart)));
       const e = myEnrolments().find((x) => x.cohort_id === i.cohort_id && x.role === 'student');
       const group = e ? mockGroupOf(e.id).group_no : null;
       if (group !== null) {
-        for (const r of links) if (r.group_nos.includes(group)) times.push(startOf(r));
+        for (const r of links) {
+          const own = r.slots.find((x) => x.group_nos.includes(group));
+          if (own) times.push(at(r, own.start_time));
+        }
       }
     }
   }

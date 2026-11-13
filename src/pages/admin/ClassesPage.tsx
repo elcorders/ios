@@ -5,7 +5,7 @@ import { formatColombo } from '../../lib/time';
 import { useAdmin } from './AdminContext';
 import { Dialog } from './Dialog';
 import { ClassDialog } from './classes/ClassDialog';
-import { classesError, groupsText, isUpcoming, labText } from './classes/classesHelpers';
+import { classesError, isUpcoming, labText, slotText } from './classes/classesHelpers';
 import './content.css';
 import './classes.css';
 
@@ -100,10 +100,12 @@ function SessionList({ items, readOnly, onAction }: { items: ClassSession[]; rea
     <ul className="class-list">
       {items.map((s) => (
         <li key={s.id} className="class-item" aria-label={s.title}>
-          <span className="class-when">{longDate(s.starts_at)} · {s.start_time}–{s.end_time}</span>
+          <span className="class-when">{longDate(s.starts_at)}</span>
           <h3>{s.title}</h3>
+          <ul className="class-slots" aria-label="Time slots">
+            {s.slots.map((x) => <li key={x.id}>{slotText(x)}</li>)}
+          </ul>
           <div className="class-meta">
-            <span>{groupsText(s.group_nos)}</span>
             <span>{s.deliverables.length} deliverable{s.deliverables.length === 1 ? '' : 's'}</span>
             <span>{labText(s.lab_block_until)}</span>
           </div>

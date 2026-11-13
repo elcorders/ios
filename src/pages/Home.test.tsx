@@ -95,6 +95,19 @@ describe('Home dashboard cards', () => {
     expect(screen.getByRole('link', { name: /Class materials/ })).toBeInTheDocument();
   });
 
+  it('shows the time of the student\'s own slot on Next session', async () => {
+    await api.verifyEmailCode('student005@example.edu', '123456');
+    const me = await api.getMe();
+    const group = me.ok ? me.data.enrolments[0]!.group_no! : 0;
+    const sessions = await api.getMySessions(MOCK_COHORT.id);
+    const t2 = sessions.ok ? sessions.data.upcoming.find((x) => x.title.startsWith('Tutorial 2'))! : null;
+    const own = t2!.slots.find((x) => x.group_nos.includes(group))!;
+    open();
+    const next = await screen.findByRole('region', { name: /Next session/ });
+    expect(next).toHaveTextContent(/Tutorial 2/);
+    expect(next).toHaveTextContent(`${own.start_time}–${own.end_time}`);
+  });
+
   it('shows no student cards for an admin', async () => {
     await api.verifyEmailCode('admin@example.edu', '123456');
     open();
