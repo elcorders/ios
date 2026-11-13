@@ -12,7 +12,8 @@ export const contentMethods: S6Api & S17Api = {
       p_id: i.id, p_kind: i.kind, p_cohort_id: i.cohort_id, p_title: i.title,
       p_summary: i.summary, p_position: i.position, p_body_html: i.body_html,
     }),
-  adminSetContentPublish: (id, publishedAt) => callRpc('admin_set_content_publish', { p_id: id, p_published_at: publishedAt }),
+  adminSetContentPublish: (id, publishedAt, notify) =>
+    callRpc('admin_set_content_publish', { p_id: id, p_published_at: publishedAt, p_notify: notify ?? null }),
   adminDeleteContent: (id) => callRpc('admin_delete_content', { p_id: id }),
   adminCopyTutorials: (from, to) => callRpc('admin_copy_tutorials', { p_from_cohort_id: from, p_to_cohort_id: to }),
   // S17 — library + versions

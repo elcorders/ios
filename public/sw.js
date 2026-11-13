@@ -1,6 +1,6 @@
 /* global self, caches, fetch, URL, Response */
 /* Minimal app-shell service worker. Never touches cross-origin or non-GET requests. */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = 'nibm-ios-shell-' + VERSION;
 const STATIC = /^\/(assets\/|icons\/|manifest\.webmanifest$|favicon\.svg$)/;
 
@@ -67,12 +67,15 @@ self.addEventListener('push', (event) => {
   const body = typeof data.body === 'string' ? data.body : '';
   const url = typeof data.url === 'string' ? data.url : '/';
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { url },
-    }),
+    self.registration
+      .showNotification(title, {
+        body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data: { url },
+      })
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((list) => list.forEach((c) => c.postMessage({ type: 'push' }))),
   );
 });
 

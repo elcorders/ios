@@ -25,5 +25,6 @@ test('admin uploads an HTML tutorial and publishes it', async ({ page }) => {
   const row = page.getByRole('row', { name: /E2E Lesson/ });
   await expect(row).toContainText('Draft');
   await page.getByRole('button', { name: 'Publish now E2E Lesson' }).click();
+  await page.getByRole('button', { name: 'Publish without notifying' }).click();
   await expect(row).toContainText('Published');
 });

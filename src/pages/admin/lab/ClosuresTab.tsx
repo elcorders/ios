@@ -7,6 +7,10 @@ import { Dialog } from '../Dialog';
 import { KIND_BLOCKS, KIND_LABELS, addDaysIso, colomboToday, isValidDate, parseClosureLines } from './labHelpers';
 import '../table/table.css';
 
+const cancelled = (n: number) => (n > 0 ? ` · ${n} ${n === 1 ? 'booking' : 'bookings'} cancelled.` : '');
+const impactText = (n: number, m: number) =>
+  `This cancels ${n} ${n === 1 ? 'booking' : 'bookings'} (${m} ${m === 1 ? 'student' : 'students'}). They get their credits back and a notification.`;
+
 const fmtShort = (d: string) => formatColombo(`${d}T12:00:00+05:30`, { day: '2-digit', month: 'short' });
 
 export function ClosuresTab() {
@@ -145,11 +149,23 @@ function AddOne({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) => 
   const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [impact, setImpact] = useState<{ bookings: number; students: number } | null>(null);
 
-  const submit = async () => {
+  const check = async () => {
     if (!isValidDate(from)) return setError('Choose a From date.');
     if (to && !isValidDate(to)) return setError('Choose a valid To date.');
     if (to && to < from) return setError('To must be on or after From.');
+    const pre = await api.adminClosureImpact(from, to || from);
+    if (pre.ok && pre.data.bookings > 0) {
+      setError(null);
+      setImpact(pre.data);
+      return;
+    }
+    await submit();
+  };
+
+  const submit = async () => {
+    setImpact(null);
     const text = reason.trim() || null;
     const res = !to || to === from
       ? await api.adminAddClosures([{ date: from, kind, reason: text }])
@@ -159,12 +175,13 @@ function AddOne({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) => 
       setFrom('');
       setTo('');
       setReason('');
-      onDone(`Added ${res.data.added}, updated ${res.data.updated}.`);
+      onDone(`Added ${res.data.added}, updated ${res.data.updated}${cancelled(res.data.withdrawn) || '.'}`);
     } else setError(messageFor(res.error));
   };
 
   return (
-    <form className="card stack" aria-label={`Add ${blk.single}`} onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+    <>
+    <form className="card stack" aria-label={`Add ${blk.single}`} onSubmit={(e) => { e.preventDefault(); void check(); }}>
       <h5>Add one day or a range</h5>
       <div className="field"><label htmlFor={`cl-from-${kind}`}>From ({blk.single})</label><input id={`cl-from-${kind}`} type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
       <div className="field"><label htmlFor={`cl-to-${kind}`}>To ({blk.single}, optional)</label><input id={`cl-to-${kind}`} type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
@@ -172,6 +189,12 @@ function AddOne({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) => 
       {error ? <p role="alert" className="error">{error}</p> : null}
       <div className="row"><button type="submit">Add {blk.single}</button></div>
     </form>
+      {impact ? (
+        <Dialog title="Cancel bookings?" submitLabel="Add and cancel" onCancel={() => setImpact(null)} onSubmit={() => void submit()}>
+          <p>{impactText(impact.bookings, impact.students)}</p>
+        </Dialog>
+      ) : null}
+    </>
   );
 }
 
@@ -180,22 +203,37 @@ function PasteMany({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) 
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [impact, setImpact] = useState<{ bookings: number; students: number } | null>(null);
   const parsed = useMemo(() => parseClosureLines(text, kind), [text, kind]);
+
+  const check = async () => {
+    if (parsed.rows.length === 0) return;
+    const pre = await Promise.all(parsed.rows.map((r) => api.adminClosureImpact(r.date, r.date)));
+    const sum = { bookings: 0, students: 0 };
+    for (const p of pre) if (p.ok) { sum.bookings += p.data.bookings; sum.students += p.data.students; }
+    if (sum.bookings > 0) {
+      setImpact(sum);
+      return;
+    }
+    await submit();
+  };
 
   const submit = async () => {
     if (parsed.rows.length === 0) return;
+    setImpact(null);
     setBusy(true);
     const res = await api.adminAddClosures(parsed.rows);
     setBusy(false);
     if (res.ok) {
       setError(null);
       setText('');
-      onDone(`Added ${res.data.added}, updated ${res.data.updated}.`);
+      onDone(`Added ${res.data.added}, updated ${res.data.updated}${cancelled(res.data.withdrawn) || '.'}`);
     } else setError(messageFor(res.error));
   };
 
   return (
-    <form className="card stack" aria-label={`Paste many ${blk.noun}`} onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+    <>
+    <form className="card stack" aria-label={`Paste many ${blk.noun}`} onSubmit={(e) => { e.preventDefault(); void check(); }}>
       <h5>Paste many</h5>
       <p className="muted">One per line: YYYY-MM-DD or YYYY-MM-DD, reason. Existing dates are updated.</p>
       <div className="field"><label htmlFor={`paste-${kind}`}>Dates ({blk.noun})</label><textarea id={`paste-${kind}`} rows={4} value={text} onChange={(e) => setText(e.target.value)} /></div>
@@ -213,5 +251,11 @@ function PasteMany({ kind, onDone }: { kind: ClosureKind; onDone: (msg: string) 
       {error ? <p role="alert" className="error">{error}</p> : null}
       <div className="row"><button type="submit" disabled={busy || parsed.rows.length === 0}>Add {parsed.rows.length || ''} {blk.noun}</button></div>
     </form>
+      {impact ? (
+        <Dialog title="Cancel bookings?" submitLabel="Add and cancel" onCancel={() => setImpact(null)} onSubmit={() => void submit()}>
+          <p>{impactText(impact.bookings, impact.students)}</p>
+        </Dialog>
+      ) : null}
+    </>
   );
 }

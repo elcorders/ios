@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { routes } from '../../routes';
@@ -300,5 +300,51 @@ describe('admin content tab', () => {
         await waitFor(() => expect(screen.queryByRole('article', { name: 'Tutorial 3 — Draft' })).toBeNull());
       });
     });
+  });
+});
+
+describe('admin content: notify on open (S19)', () => {
+  const C = '00000000-0000-4000-8000-000000000252';
+  const notify = async () => {
+    const res = await api.adminListContent('tutorial', C);
+    return res.ok ? res.data.find((r) => r.id === 'content-t3')?.notify_on_release : undefined;
+  };
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('publish now asks and passes the choice', async () => {
+    vi.stubEnv('VITE_FEATURE_PUSH', 'on');
+    open();
+    await screen.findByText('Tutorial 3 — Draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Publish now Tutorial 3 — Draft' }));
+    expect(within(dialog()).getByText('Notify students when it opens?')).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Publish without notifying' })).toBeInTheDocument();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Publish and notify' }));
+    await waitFor(() => expect(rowOf(/Tutorial 3/)).toHaveTextContent('Published'));
+    expect(await notify()).toBe(true);
+    expect(rowOf(/Tutorial 3/)).toHaveTextContent('Notify on open');
+  });
+
+  it('schedule asks after the time is valid; without notifying leaves it off', async () => {
+    vi.stubEnv('VITE_FEATURE_PUSH', 'on');
+    open();
+    await screen.findByText('Tutorial 3 — Draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Schedule Tutorial 3 — Draft' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule' }));
+    expect(await within(dialog()).findByRole('alert')).toHaveTextContent('Pick a date and time.');
+    fireEvent.change(within(dialog()).getByLabelText(/Publish at/), { target: { value: '2999-03-05T09:30' } });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule' }));
+    expect(within(dialog()).getByText('Notify students when it opens?')).toBeInTheDocument();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule without notifying' }));
+    await waitFor(() => expect(rowOf(/Tutorial 3/)).toHaveTextContent('Scheduled'));
+    expect(await notify()).toBe(false);
+    expect(rowOf(/Tutorial 3/)).not.toHaveTextContent('Notify on open');
+  });
+
+  it('does not ask when the push flag is off', async () => {
+    open();
+    await screen.findByText('Tutorial 3 — Draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Publish now Tutorial 3 — Draft' }));
+    await waitFor(() => expect(rowOf(/Tutorial 3/)).toHaveTextContent('Published'));
+    expect(screen.queryByText('Notify students when it opens?')).toBeNull();
   });
 });

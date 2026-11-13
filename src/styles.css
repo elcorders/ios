@@ -378,3 +378,14 @@ details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
 .app-full .content-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .content-view-frame { flex: 1; min-height: 0; }
 .content-frame.fill { height: 100%; }
+
+.main-nav .bell-link { position: relative; display: inline-flex; align-items: center; }
+.bell-badge {
+  min-width: 1.1rem; padding: 0 0.3rem; margin-left: 0.2rem; border-radius: 999px;
+  background: var(--accent, #2563eb); color: var(--on-accent, #fff); font-size: 0.7rem; line-height: 1.1rem; text-align: center;
+}
+.notif-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.notif-item { width: 100%; text-align: left; display: grid; gap: 0.15rem; overflow-wrap: anywhere; }
+.notif-item .notif-title { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
+.notif-dot { flex: none; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent, #2563eb); }
+.notif-unread .notif-title { font-weight: 700; }

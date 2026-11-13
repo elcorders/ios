@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../../api';
 import type { AdminContentRow, ClassSession } from '../../../api/types';
+import { pushEnabledFor } from '../../../lib/features';
 import { Dialog } from '../Dialog';
 import { classesError, DEFAULT_LAB_UNTIL, labModeOf, labValue, MAX_SLOTS, newSlot, slotsProblem, type LabMode, type SlotDraft } from './classesHelpers';
 
@@ -26,6 +27,8 @@ export function ClassDialog({ cohortId, session, groups, content, onCancel, onDo
   const [mode, setMode] = useState<LabMode>(initialMode);
   const [until, setUntil] = useState(initialMode === 'time' ? session!.lab_block_until! : '17:00');
   const [linked, setLinked] = useState<string[]>(session?.content.map((c) => c.id) ?? []);
+  const [notify, setNotify] = useState<string[]>(session?.content.filter((c) => c.notify).map((c) => c.id) ?? []);
+  const push = pushEnabledFor(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +47,7 @@ export function ClassDialog({ cohortId, session, groups, content, onCancel, onDo
       id: session?.id ?? null, cohort_id: cohortId, date, title: title.trim(),
       slots: slots.map((x) => ({ start_time: x.start, end_time: x.end, group_nos: [...x.groups].sort((a, b) => a - b) })),
       deliverables: deliverables.split('\n').map((d) => d.trim()).filter(Boolean),
-      lab_block_until: labValue(mode, until), content_ids: linked,
+      lab_block_until: labValue(mode, until), content_ids: linked, notify_content_ids: notify.filter((id) => linked.includes(id)),
     });
     if (res.ok) await onDone();
     else {
@@ -60,10 +63,18 @@ export function ClassDialog({ cohortId, session, groups, content, onCancel, onDo
       <legend>{label}</legend>
       {rows.length === 0 ? <span className="muted">None yet.</span> : null}
       {rows.map((c) => (
-        <label key={c.id}>
-          <input type="checkbox" checked={linked.includes(c.id)} onChange={() => setLinked(toggle(linked, c.id))} />
-          <span>{c.title} <span className="muted">({c.status.replace('_', ' ')})</span></span>
-        </label>
+        <div key={c.id} className="class-link">
+          <label>
+            <input type="checkbox" checked={linked.includes(c.id)} onChange={() => setLinked(toggle(linked, c.id))} />
+            <span>{c.title} <span className="muted">({c.status.replace('_', ' ')})</span></span>
+          </label>
+          {push && linked.includes(c.id) ? (
+            <label className="class-notify">
+              <input type="checkbox" checked={notify.includes(c.id)} onChange={() => setNotify(toggle(notify, c.id))} />
+              <span>Notify when it opens</span>
+            </label>
+          ) : null}
+        </div>
       ))}
     </fieldset>
   );
@@ -136,6 +147,7 @@ export function ClassDialog({ cohortId, session, groups, content, onCancel, onDo
       ) : null}
       {linkGroup('Linked tutorials', tutorials)}
       {linkGroup('Linked materials', materials)}
+      {push ? <p className="muted">Class reminders go out at 18:00 the evening before, to each slot&apos;s groups.</p> : null}
     </Dialog>
   );
 }

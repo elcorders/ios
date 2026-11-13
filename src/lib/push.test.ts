@@ -83,7 +83,7 @@ describe('enable / disable', () => {
     await api.verifyEmailCode('student005@example.edu', '123456');
     expect(await enablePush()).toEqual({ ok: true });
     expect(pushManager.subscribe).toHaveBeenCalledWith(expect.objectContaining({ userVisibleOnly: true }));
-    expect((await api.getMyPush())).toEqual({ ok: true, data: { devices: 1 } });
+    expect((await api.getMyPush())).toEqual({ ok: true, data: { devices: 1, unread: 2 } });
     expect(await currentSubscription()).not.toBeNull();
   });
   it('reports denied permission', async () => {
@@ -98,6 +98,6 @@ describe('enable / disable', () => {
     await enablePush();
     await disablePush();
     expect(sub.unsubscribe).toHaveBeenCalled();
-    expect(await api.getMyPush()).toEqual({ ok: true, data: { devices: 0 } });
+    expect(await api.getMyPush()).toEqual({ ok: true, data: { devices: 0, unread: 2 } });
   });
 });

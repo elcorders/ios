@@ -9,7 +9,7 @@ const slot = (start_time: string, end_time: string, group_nos: number[]) => ({ s
 
 const input = (over: Partial<ClassSessionInput> = {}): ClassSessionInput => ({
   id: null, cohort_id: MOCK_COHORT.id, date: '2099-01-05', title: 'Extra class (fictional)',
-  slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [' one ', '', 'two'], lab_block_until: '16:00', content_ids: [], ...over,
+  slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [' one ', '', 'two'], lab_block_until: '16:00', content_ids: [], notify_content_ids: [], ...over,
 });
 
 beforeEach(() => {

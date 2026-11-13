@@ -15,6 +15,7 @@ import { Materials } from './pages/Materials';
 import { ContentView } from './pages/ContentView';
 import { Transfer } from './pages/Transfer';
 import { Lab } from './pages/Lab';
+import { Notifications } from './pages/Notifications';
 import { Install } from './pages/Install';
 import { NotFound } from './pages/NotFound';
 
@@ -35,6 +36,7 @@ export const routes: RouteObject[] = [
       { path: 'materials', element: <RequireAuth><Materials /></RequireAuth> },
       { path: 'transfer', element: <RequireAuth><Transfer /></RequireAuth> },
       { path: 'lab', element: <RequireAuth><Lab /></RequireAuth> },
+      { path: 'notifications', element: <RequireAuth><Notifications /></RequireAuth> },
       { path: 'c/:id', element: <RequireAuth><ContentView /></RequireAuth> },
       { path: 'admin/*', element: <RequireAuth><AdminLayout /></RequireAuth> },
       { path: 'login', element: <Login /> },

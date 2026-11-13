@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { routes } from '../../routes';
@@ -130,5 +130,40 @@ describe('admin classes tab', () => {
     expect(await screen.findByText(/class sessions are read-only/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add class' })).toBeNull();
     expect(screen.getAllByText('No upcoming classes.').length).toBe(1);
+  });
+});
+
+describe('admin classes: notify when it opens (S19)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('shows a tick per linked item and saves notify_content_ids', async () => {
+    vi.stubEnv('VITE_FEATURE_PUSH', 'on');
+    open();
+    await screen.findByText('Progress review (fictional)');
+    fireEvent.click(screen.getByRole('button', { name: 'Add class' }));
+    const d = within(dialog());
+    expect(d.getByText("Class reminders go out at 18:00 the evening before, to each slot's groups.")).toBeInTheDocument();
+    expect(d.queryByLabelText('Notify when it opens')).toBeNull();
+    fireEvent.change(d.getByLabelText('Title'), { target: { value: 'Notify class' } });
+    fireEvent.change(d.getByLabelText('Date'), { target: { value: '2099-02-03' } });
+    fireEvent.click(within(d.getByRole('group', { name: 'Slot 1' })).getByLabelText('G1'));
+    fireEvent.click(d.getByLabelText(/Tutorial 3 — Draft/));
+    const tick = d.getByLabelText('Notify when it opens');
+    expect(tick).not.toBeChecked();
+    fireEvent.click(tick);
+    fireEvent.click(d.getByRole('button', { name: 'Save' }));
+    await screen.findByRole('listitem', { name: 'Notify class' });
+    const list = await api.adminListClassSessions('00000000-0000-4000-8000-000000000252');
+    const saved = list.ok ? list.data.find((s) => s.title === 'Notify class') : undefined;
+    expect(saved?.content.find((c) => c.id === 'content-t3')?.notify).toBe(true);
+  });
+
+  it('hides the tick and help text when the flag is off', async () => {
+    open();
+    await screen.findByText('Progress review (fictional)');
+    fireEvent.click(screen.getByRole('button', { name: 'Add class' }));
+    fireEvent.click(within(dialog()).getByLabelText(/Tutorial 3 — Draft/));
+    expect(within(dialog()).queryByLabelText('Notify when it opens')).toBeNull();
+    expect(within(dialog()).queryByText(/Class reminders go out/)).toBeNull();
   });
 });

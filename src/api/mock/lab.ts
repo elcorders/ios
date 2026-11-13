@@ -7,6 +7,7 @@ import { getMockLabOpen } from './cohortState';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS, type MockUser } from './fixtures/s1';
 import { mockActiveStudents, mockGroupOf } from './survey';
 import { labBlockUntil } from './sessionStore';
+import { mockEnqueueNotification, setClosureImpactHook } from './push';
 
 /** S3 mock (CONTRACT.md §S3). In-memory, fictional data. All calendar logic is Asia/Colombo (+05:30, no DST). */
 
@@ -264,6 +265,38 @@ function suggestionsFor(slotMsValue: number, prefId: string, enrolmentId: string
   return out;
 }
 
+
+// ───────────── closures: withdraw future bookings (S19) ─────────────
+const futureBookedOn = (d: IsoDate) => bookings.filter((b) => b.status === 'booked' && b.slot_ms > nowMs() && dateOf(b.slot_ms) === d);
+const hhmm = (ms: number) => shifted(ms).toISOString().slice(11, 16);
+const dayLabel = (d: IsoDate) =>
+  new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(dateMs(d))).replace(',', '');
+
+function closureImpact(from: IsoDate, to: IsoDate): { bookings: number; students: number } {
+  const hit: MockBooking[] = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) hit.push(...futureBookedOn(d));
+  return { bookings: hit.length, students: new Set(hit.map((b) => b.enrolment_id)).size };
+}
+setClosureImpactHook(closureImpact);
+
+/** Withdraw future booked bookings on a closed date and tell each student once. Returns the count. */
+function withdrawForClosure(d: IsoDate, reason: string | null): number {
+  const hit = futureBookedOn(d);
+  const byStudent = new Map<string, MockBooking[]>();
+  for (const b of hit) {
+    b.status = 'withdrawn';
+    b.withdrawn_at = toIso(nowMs());
+    byStudent.set(b.enrolment_id, [...(byStudent.get(b.enrolment_id) ?? []), b]);
+  }
+  for (const [enrolmentId, list] of byStudent) {
+    const e = findStudentEnrolmentById(enrolmentId);
+    if (!e) continue; // fictional filler students have no account
+    const times = list.sort((x, y) => x.slot_ms - y.slot_ms).map((b) => `${hhmm(b.slot_ms)}–${hhmm(b.slot_ms + HOUR_MS)}`).join(', ');
+    mockEnqueueNotification(e.user_id, 'lab_closed', `Lab closed ${dayLabel(d)}`, `${reason ?? 'The lab is closed'}. Your booking ${times} was cancelled and your credits returned.`, '/#/lab');
+  }
+  return hit.length;
+}
+
 // ───────────── API ─────────────
 const rangeOk = (from: unknown, to: unknown) => validDate(from) && validDate(to) && diffDays(from, to) >= 0 && diffDays(from, to) <= 31;
 
@@ -492,7 +525,9 @@ export const mockLab: S3Api & S13Api = {
         added += 1;
       }
     }
-    return ok({ added, updated });
+    let withdrawn = 0;
+    for (const date of new Set(items.map((i) => i.date))) withdrawn += withdrawForClosure(date, items.find((i) => i.date === date)?.reason?.trim() || null);
+    return ok({ added, updated, withdrawn });
   },
 
   async adminAddClosureRange(input) {
@@ -520,7 +555,9 @@ export const mockLab: S3Api & S13Api = {
         added += 1;
       }
     }
-    return ok({ added, updated, range_id: rangeId });
+    let withdrawn = 0;
+    for (let i = 0; i <= span; i += 1) withdrawn += withdrawForClosure(addDays(input.from, i), reason);
+    return ok({ added, updated, range_id: rangeId, withdrawn });
   },
 
   async adminDeleteClosure(id, wholeRange = false) {

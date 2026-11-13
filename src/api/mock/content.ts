@@ -25,6 +25,7 @@ interface MockItem {
   library_id: string | null;
   version_id: string | null;
   published_at: string | null;
+  notify_on_release?: boolean;
   updated_at: string;
 }
 
@@ -206,9 +207,9 @@ function visible(i: MockItem): boolean {
 }
 
 /** For §S14 session mocks: link info of a content item (admin view). */
-export function mockContentLinkInfo(id: string): { id: string; kind: ContentKind; title: string; status: ContentStatus } | null {
+export function mockContentLinkInfo(id: string): { id: string; kind: ContentKind; title: string; status: ContentStatus; notify: boolean } | null {
   const i = items.find((x) => x.id === id);
-  return i ? { id: i.id, kind: i.kind, title: i.title, status: statusOf(i) } : null;
+  return i ? { id: i.id, kind: i.kind, title: i.title, status: statusOf(i), notify: i.notify_on_release === true } : null;
 }
 /** For §S14 session mocks: kind/cohort of an item. */
 export function mockContentMeta(id: string): { kind: ContentKind; cohort_id: string | null } | null {
@@ -220,6 +221,11 @@ export function mockContentAvailable(id: string): boolean {
   const i = items.find((x) => x.id === id);
   return !!i && visible(i);
 }
+/** S19: set notify_on_release for a linked item. */
+export function mockSetNotify(id: string, notify: boolean): void {
+  const i = items.find((x) => x.id === id);
+  if (i && i.kind !== 'resource') i.notify_on_release = notify;
+}
 /** Drop an item's links (deleting content cascades). */
 function unlink(id: string): void {
   for (const r of sessionRows()) r.content_ids = r.content_ids.filter((c) => c !== id);
@@ -229,6 +235,7 @@ const adminRow = (i: MockItem): AdminContentRow => ({
   id: i.id, kind: i.kind, cohort_id: i.cohort_id, title: i.title, summary: i.summary, position: i.position,
   published_at: i.published_at, status: statusOf(i), size_bytes: sizeOf(bodyOf(i)), updated_at: i.updated_at,
   linked_sessions: hasSessions(i) ? linksOf(i.id).length : 0, release_at: releaseAt(i),
+  notify_on_release: i.kind !== 'resource' && i.notify_on_release === true,
   library_id: i.library_id, version_no: versionOf(i)?.version_no ?? null,
   latest_version_no: i.library_id ? latestOf(i.library_id) : null, link_count: i.library_id ? linksOfLib(i.library_id).length : 0,
 });
@@ -329,7 +336,7 @@ export const mockContent: S6Api & S17Api = {
     return ok(adminRow(i));
   },
 
-  async adminSetContentPublish(id, publishedAt) {
+  async adminSetContentPublish(id, publishedAt, notify) {
     const err = requireAdmin();
     if (err) return fail(err);
     const i = items.find((x) => x.id === id);
@@ -337,6 +344,7 @@ export const mockContent: S6Api & S17Api = {
     if (archivedTarget(i.cohort_id)) return fail('cohort_archived');
     if (publishedAt !== null && Number.isNaN(Date.parse(publishedAt))) return fail('invalid_input');
     i.published_at = publishedAt === null ? null : new Date(publishedAt).toISOString();
+    if (i.kind !== 'resource' && typeof notify === 'boolean') i.notify_on_release = notify;
     i.updated_at = new Date().toISOString();
     return ok(adminRow(i));
   },

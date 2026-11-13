@@ -83,7 +83,9 @@ describe('rpc methods', () => {
       p_id: null, p_kind: 'resource', p_cohort_id: null, p_title: 'T', p_summary: null, p_position: 1, p_body_html: '<p>x</p>',
     });
     await supabaseApi.adminSetContentPublish('x1', null);
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_set_content_publish', { p_id: 'x1', p_published_at: null });
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_set_content_publish', { p_id: 'x1', p_published_at: null, p_notify: null });
+    await supabaseApi.adminSetContentPublish('x1', '2999-01-01T00:00:00Z', true);
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_set_content_publish', { p_id: 'x1', p_published_at: '2999-01-01T00:00:00Z', p_notify: true });
     await supabaseApi.adminCopyTutorials('a', 'b');
     expect(mocks.rpc).toHaveBeenCalledWith('admin_copy_tutorials', { p_from_cohort_id: 'a', p_to_cohort_id: 'b' });
   });
@@ -173,6 +175,27 @@ describe('auth', () => {
     const r = await supabaseApi.verifyEmailCode('s@example.edu', '123456');
     expect(mocks.verifyOtp).toHaveBeenCalledWith({ email: 's@example.edu', token: '123456', type: 'email' });
     expect(r.ok === false && r.error.code).toBe('invalid_code');
+  });
+  it('S19 methods call the contract RPCs with p_ args', async () => {
+    mocks.rpc.mockResolvedValue({ data: {}, error: null });
+    await supabaseApi.listMyNotifications('2026-11-01T00:00:00Z');
+    expect(mocks.rpc).toHaveBeenCalledWith('list_my_notifications', { p_before: '2026-11-01T00:00:00Z', p_limit: 30 });
+    await supabaseApi.listMyNotifications();
+    expect(mocks.rpc).toHaveBeenCalledWith('list_my_notifications', { p_before: null, p_limit: 30 });
+    await supabaseApi.markNotificationsRead(null);
+    expect(mocks.rpc).toHaveBeenCalledWith('mark_notifications_read', { p_ids: null });
+    await supabaseApi.markNotificationsRead(['n1']);
+    expect(mocks.rpc).toHaveBeenCalledWith('mark_notifications_read', { p_ids: ['n1'] });
+    await supabaseApi.adminSetPushKind('lab_closed', false);
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_set_push_kind', { p_kind: 'lab_closed', p_enabled: false });
+    await supabaseApi.adminPushAudience('c1', [1, 2]);
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_audience', { p_cohort_id: 'c1', p_group_nos: [1, 2] });
+    await supabaseApi.adminPushCustom({ cohort_id: 'c1', group_nos: null, title: 'T', body: 'B', url: '/#/lab' });
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_custom', { p_cohort_id: 'c1', p_group_nos: null, p_title: 'T', p_body: 'B', p_url: '/#/lab' });
+    await supabaseApi.adminPushLog();
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_log', undefined);
+    await supabaseApi.adminClosureImpact('2026-11-10', '2026-11-12');
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_closure_impact', { p_from: '2026-11-10', p_to: '2026-11-12' });
   });
   it('signOut maps to ok', async () => {
     mocks.signOut.mockResolvedValue({ error: null });

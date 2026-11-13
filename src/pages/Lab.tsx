@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import type { ApiError, BookWarning, Booking, IsoDate, IsoDateTime, LabCalendar, LabDay, MyLab } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
@@ -64,6 +64,9 @@ export function Lab() {
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ count: number; warnings: BookWarning[] } | null>(null);
+  const [params] = useSearchParams();
+  const wantedBooking = params.get('b');
+  const opened = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!cohortId) return;
@@ -88,6 +91,19 @@ export function Lab() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data load on mount
     void load();
   }, [load]);
+
+  // Deep link from a reminder: /#/lab?b=<booking id> scrolls to it and opens the Withdraw confirm.
+  useEffect(() => {
+    if (!wantedBooking || !lab || opened.current === wantedBooking) return;
+    const b = lab.bookings.find((x) => x.id === wantedBooking);
+    if (!b) return;
+    opened.current = wantedBooking;
+    document.getElementById(`booking-${b.id}`)?.scrollIntoView?.({ block: 'center' });
+    if (b.status === 'booked' && Date.parse(b.slot_start) > Date.now()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time open from the link
+      setWithdrawing(b);
+    }
+  }, [wantedBooking, lab]);
 
   const days = useMemo(() => calendar?.days ?? [], [calendar]);
   const activeDay = useMemo(() => {
@@ -315,7 +331,7 @@ export function Lab() {
             {upcoming.map((b) => {
               const future = Date.parse(b.slot_start) > now;
               return (
-                <li key={b.id}>
+                <li key={b.id} id={`booking-${b.id}`} className={b.id === wantedBooking ? 'lab-booking-target' : undefined}>
                   <span>
                     <strong>{fmtDayTime(b.slot_start)}</strong> to {fmtTime(b.slot_end)}
                     {b.preferred_mac_no ? <span className="muted"> · Mac {b.preferred_mac_no}</span> : null}

@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { resetMockAuth } from '../../api/mock/auth';
 import { resetMockAdmin } from '../../api/mock/admin';
 import { resetMockSessions, setSessionRows } from '../../api/mock/sessionStore';
+import { resetMockLab } from '../../api/mock/lab';
 import { MOCK_COHORT } from '../../api/mock/fixtures/s1';
 import { addDaysIso, colomboToday, parseClosureLines } from './lab/labHelpers';
 
@@ -231,5 +232,56 @@ describe('Admin > Lab > Closures ranges', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
     expect(await screen.findByText('Added 1, updated 0.')).toBeInTheDocument();
     expect(screen.queryByText(/part of range/)).toBeNull();
+  });
+});
+
+describe('Admin > Lab > Closures cancel bookings (S19)', () => {
+  async function bookedDate(): Promise<string> {
+    const from = colomboToday();
+    const rows = await api.adminListLabBookings(from, addDaysIso(from, 14));
+    if (!rows.ok) throw new Error('bookings');
+    return rows.data.find((r) => r.status === 'booked')!.slot_start.slice(0, 10);
+  }
+
+  it('asks before cancelling, then reports the cancelled count (single day)', async () => {
+    resetMockLab();
+    await open('/admin/lab/closures');
+    await screen.findByRole('table', { name: 'Upcoming lab closures' });
+    const d = await bookedDate();
+    const impact = await api.adminClosureImpact(d, d);
+    if (!impact.ok) throw new Error('impact');
+    fireEvent.change(screen.getByLabelText('From (lab closure)'), { target: { value: d } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    const dlg = await screen.findByRole('dialog');
+    expect(dlg).toHaveTextContent(`This cancels ${impact.data.bookings} bookings (${impact.data.students} students). They get their credits back and a notification.`);
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Add and cancel' }));
+    expect(await screen.findByText(`Added 1, updated 0 · ${impact.data.bookings} bookings cancelled.`)).toBeInTheDocument();
+  });
+
+  it('cancel keeps the closure unsaved; ranges ask too', async () => {
+    resetMockLab();
+    await open('/admin/lab/closures');
+    await screen.findByRole('table', { name: 'Upcoming lab closures' });
+    const d = await bookedDate();
+    fireEvent.change(screen.getByLabelText('From (lab closure)'), { target: { value: d } });
+    fireEvent.change(screen.getByLabelText('To (lab closure, optional)'), { target: { value: addDaysIso(d, 1) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    const dlg = await screen.findByRole('dialog');
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(within(await screen.findByRole('table', { name: 'Upcoming lab closures' })).getByText('No upcoming lab closures.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Add and cancel' }));
+    expect(await screen.findByText(/^Added 2, updated 0 · \d+ bookings? cancelled\.$/)).toBeInTheDocument();
+  });
+
+  it('adds without a prompt when nothing is booked', async () => {
+    resetMockLab();
+    await open('/admin/lab/closures');
+    await screen.findByRole('table', { name: 'Upcoming lab closures' });
+    fireEvent.change(screen.getByLabelText('From (lab closure)'), { target: { value: addDaysIso(colomboToday(), 100) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add lab closure' }));
+    expect(await screen.findByText('Added 1, updated 0.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

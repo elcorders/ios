@@ -33,3 +33,4 @@
 .lab-level-filling { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
 .lab-level-almost_full { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 60%, transparent); }
 .lab-level-full { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.lab-booking-target { outline: 2px solid var(--accent, currentColor); outline-offset: 2px; }

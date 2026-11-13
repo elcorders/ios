@@ -334,7 +334,7 @@ describe('mock lab admin', () => {
       { date: '2026-11-10', kind: 'closed', reason: 'Fictional closure' },
       { date: '2026-11-10', kind: 'closed', reason: 'Updated reason' },
     ]);
-    expect(add).toEqual({ ok: true, data: { added: 1, updated: 1 } });
+    expect(add).toEqual({ ok: true, data: { added: 1, updated: 1, withdrawn: 18 } });
     expect(code(await api.adminAddClosures([{ date: 'bad', kind: 'closed', reason: null }]))).toBe('invalid_input');
     const list = await api.listClosures('2026-11-09', '2026-11-30');
     if (!list.ok) throw new Error();
@@ -349,7 +349,7 @@ describe('mock lab admin', () => {
     expect(code(await api.adminDeleteClosure(tue.id))).toBe('not_found');
 
     await api.verifyEmailCode('admin@example.edu', '123456');
-    expect(await api.adminAddClosures([{ date: '2026-11-12', kind: 'holiday', reason: 'Both' }])).toEqual({ ok: true, data: { added: 1, updated: 0 } });
+    expect(await api.adminAddClosures([{ date: '2026-11-12', kind: 'holiday', reason: 'Both' }])).toEqual({ ok: true, data: { added: 1, updated: 0, withdrawn: 0 } });
     const both = await api.listClosures('2026-11-12', '2026-11-12');
     expect(both.ok && both.data.map((c) => c.kind).sort()).toEqual(['class_day', 'holiday']);
     await signIn(5);

@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
 import type { AdminCohort, AdminContentRow, ContentKind, LibraryDetail } from '../../api/types';
 import { colomboLocalToIso, isoToColomboLocal } from '../../lib/colomboLocal';
+import { pushEnabledFor } from '../../lib/features';
 import { formatColombo } from '../../lib/time';
+import { BellIcon } from '../../components/BellIcon';
 import { useAdmin } from './AdminContext';
 import { Dialog } from './Dialog';
 import {
   contentError, formatSize, FRAME_NAV_WARNING, hasFrameNavigation, MAX_HTML_BYTES, readFileText, statusLabel, titleFromHtml,
 } from './contentHelpers';
+import { NotifyChoice } from './content/NotifyChoice';
 import { LibraryView } from './content/LibraryView';
 import { UpdatePrompt } from './content/UpdatePrompt';
 import { VersionDialog } from './content/VersionDialog';
@@ -16,6 +19,7 @@ import './content.css';
 type Dlg =
   | { type: 'edit'; row: AdminContentRow | null }
   | { type: 'schedule'; row: AdminContentRow }
+  | { type: 'publish'; row: AdminContentRow }
   | { type: 'delete'; row: AdminContentRow }
   | { type: 'preview'; row: AdminContentRow }
   | { type: 'copy' }
@@ -26,6 +30,8 @@ type Dlg =
  * "Publish now": a minute in the past, so a browser clock slightly ahead of the server
  * can't turn it into a schedule. The server stores its own now() for past values (CONTRACT §S6).
  */
+const clockNow = (): number => Date.now();
+
 export const publishNowIso = (): string => new Date(Date.now() - 60_000).toISOString();
 
 export function ContentPage() {
@@ -86,6 +92,7 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dlg, setDlg] = useState<Dlg | null>(null);
+  const push = kind !== 'resource' && pushEnabledFor(true);
 
   const load = useCallback(async () => {
     const res = await api.adminListContent(kind, cohortId);
@@ -166,6 +173,9 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                   <td className="content-title">
                     {r.title}
                     {r.summary ? <small>{r.summary}</small> : null}
+                    {push && r.notify_on_release ? (
+                      <small className="content-notify"><BellIcon size={14} /> Notify on open</small>
+                    ) : null}
                     {r.version_no !== null ? (
                       <small className="content-version">
                         v{r.version_no}
@@ -189,7 +199,10 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                             <button
                               type="button"
                               aria-label={`Publish now ${r.title}`}
-                              onClick={() => void act(() => api.adminSetContentPublish(r.id, publishNowIso()), `Published “${r.title}”.`)}
+                              onClick={() =>
+                                push
+                                  ? setDlg({ type: 'publish', row: r })
+                                  : void act(() => api.adminSetContentPublish(r.id, publishNowIso()), `Published “${r.title}”.`)}
                             >Publish now</button>
                           ) : null}
                           <button type="button" aria-label={`Schedule ${r.title}`} onClick={() => setDlg({ type: 'schedule', row: r })}>Schedule…</button>
@@ -214,8 +227,19 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
       {dlg?.type === 'edit' ? (
         <EditDialog kind={kind} cohortId={cohortId} row={dlg.row} onCancel={() => setDlg(null)} onDone={(saved) => afterEdit(dlg.row, saved)} />
       ) : null}
+      {dlg?.type === 'publish' ? (
+        <NotifyChoice
+          verb="Publish"
+          onCancel={() => setDlg(null)}
+          onChoose={(notify) => {
+            const row = dlg.row;
+            setDlg(null);
+            void act(() => api.adminSetContentPublish(row.id, publishNowIso(), notify), `Published “${row.title}”.`);
+          }}
+        />
+      ) : null}
       {dlg?.type === 'schedule' ? (
-        <ScheduleDialog row={dlg.row} onCancel={() => setDlg(null)} onDone={() => done(`Scheduled “${dlg.row.title}”.`)} />
+        <ScheduleDialog push={push} row={dlg.row} onCancel={() => setDlg(null)} onDone={() => done(`Scheduled “${dlg.row.title}”.`)} />
       ) : null}
       {dlg?.type === 'delete' ? (
         <DeleteDialog row={dlg.row} onCancel={() => setDlg(null)} onDone={() => done(`Deleted “${dlg.row.title}”.`)} />
@@ -299,18 +323,28 @@ function EditDialog({ kind, cohortId, row, onCancel, onDone }: BaseProps & {
   );
 }
 
-function ScheduleDialog({ row, onCancel, onDone }: BaseProps & { row: AdminContentRow; onDone: () => Promise<void> }) {
+function ScheduleDialog({ row, push, onCancel, onDone }: BaseProps & { row: AdminContentRow; push: boolean; onDone: () => Promise<void> }) {
   const scheduled = row.status === 'scheduled' && row.published_at;
   const [value, setValue] = useState(scheduled ? isoToColomboLocal(row.published_at!) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = async () => {
+  const [ask, setAsk] = useState(false);
+
+  const validate = async () => {
     const iso = colomboLocalToIso(value);
     if (!iso) return setError('Pick a date and time.');
-    if (Date.parse(iso) <= Date.now()) return setError('Pick a time in the future, or use Publish now.');
+    if (Date.parse(iso) <= clockNow()) return setError('Pick a time in the future, or use Publish now.');
+    setError(null);
+    if (push) setAsk(true);
+    else await submit(undefined);
+  };
+
+  const submit = async (notify: boolean | undefined) => {
+    const iso = colomboLocalToIso(value);
+    if (!iso) return setError('Pick a date and time.');
     setBusy(true);
-    const res = await api.adminSetContentPublish(row.id, iso);
+    const res = await api.adminSetContentPublish(row.id, iso, notify);
     if (res.ok) await onDone();
     else {
       setError(contentError(res.error));
@@ -318,8 +352,20 @@ function ScheduleDialog({ row, onCancel, onDone }: BaseProps & { row: AdminConte
     }
   };
 
+  if (ask) {
+    return (
+      <NotifyChoice
+        verb="Schedule"
+        busy={busy}
+        error={error}
+        onCancel={() => setAsk(false)}
+        onChoose={(n) => void submit(n)}
+      />
+    );
+  }
+
   return (
-    <Dialog title={`Schedule “${row.title}”`} submitLabel="Schedule" onCancel={onCancel} onSubmit={() => void submit()} busy={busy} error={error}>
+    <Dialog title={`Schedule “${row.title}”`} submitLabel="Schedule" onCancel={onCancel} onSubmit={() => void validate()} busy={busy} error={error}>
       {scheduled ? <p>Currently scheduled for {formatColombo(row.published_at!)} (Colombo time).</p> : null}
       <div className="field">
         <label htmlFor="ct-when">Publish at (Colombo time, UTC+05:30)</label>

@@ -1,6 +1,6 @@
 import type { ApiError, ClassSession, ClassSessionInput, MySession, MySessions, Result, S14Api } from '../types';
 import { getMockCurrentEmail } from './auth';
-import { ensureFixtureLinks, mockContentAvailable, mockContentLinkInfo, mockContentMeta } from './content';
+import { ensureFixtureLinks, mockContentAvailable, mockContentLinkInfo, mockContentMeta, mockSetNotify } from './content';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS, seedEnrolments } from './fixtures/s1';
 import { rowSpan, sessionRows, type MockSessionRow, type MockSlot } from './sessionStore';
 import { MOCK_GROUP_COUNT, mockGroupOf } from './survey';
@@ -59,7 +59,7 @@ function validDate(d: string): boolean {
   return DATE_RE.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().startsWith(d);
 }
 
-function validate(i: ClassSessionInput): { deliverables: string[]; slots: MockSlot[]; title: string; contentIds: string[] } | null {
+function validate(i: ClassSessionInput): { deliverables: string[]; slots: MockSlot[]; title: string; contentIds: string[]; notifyIds: string[] | null } | null {
   const title = i.title.trim();
   if (!title || title.length > 200) return null;
   if (!validDate(i.date)) return null;
@@ -83,7 +83,9 @@ function validate(i: ClassSessionInput): { deliverables: string[]; slots: MockSl
     const m = mockContentMeta(id);
     if (!m || m.kind === 'resource' || m.cohort_id !== i.cohort_id) return null;
   }
-  return { deliverables, slots, title, contentIds };
+  const notifyIds = i.notify_content_ids ?? null;
+  if (notifyIds !== null && notifyIds.some((id) => !contentIds.includes(id))) return null;
+  return { deliverables, slots, title, contentIds, notifyIds };
 }
 
 function toMySession(r: MockSessionRow, group: number | null): MySession {
@@ -125,6 +127,7 @@ export const mockSessions: S14Api = {
       date: input.date, title: v.title, slots: v.slots, deliverables: v.deliverables,
       lab_block_until: input.lab_block_until, content_ids: v.contentIds,
     };
+    if (v.notifyIds !== null) for (const id of v.contentIds) mockSetNotify(id, v.notifyIds.includes(id));
     if (existing) {
       Object.assign(existing, fields);
       return ok(toSession(existing));
