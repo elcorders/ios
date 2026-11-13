@@ -715,21 +715,40 @@ export interface ClassSession {
   starts_at: IsoDateTime;
   ends_at: IsoDateTime;
   title: string;
+  /** All attending groups (union of the slots), ascending. */
   group_nos: number[];
+  /** S18: one time per set of groups, ordered by start. start_time/end_time above = earliest start / latest end. */
+  slots: ClassSessionSlot[];
   deliverables: string[];
   /** "HH:MM", "24:00" (whole day) or null (doesn't block the lab). */
   lab_block_until: string | null;
   content: { id: Uuid; kind: ContentKind; title: string; status: ContentStatus }[];
 }
 
+/** S18: a time slot inside a class session; each group is in at most one slot. */
+export interface ClassSessionSlot {
+  id: Uuid;
+  /** "HH:MM" Colombo. */
+  start_time: string;
+  end_time: string;
+  starts_at: IsoDateTime;
+  ends_at: IsoDateTime;
+  group_nos: number[];
+}
+
+export interface ClassSlotInput {
+  start_time: string;
+  end_time: string;
+  group_nos: number[];
+}
+
 export interface ClassSessionInput {
   id: Uuid | null;
   cohort_id: Uuid;
   date: IsoDate;
-  start_time: string;
-  end_time: string;
   title: string;
-  group_nos: number[];
+  /** S18: 1–6 slots, each ≥ 1 group, a group in at most one slot. */
+  slots: ClassSlotInput[];
   deliverables: string[];
   lab_block_until: string | null;
   content_ids: Uuid[];
@@ -738,12 +757,15 @@ export interface ClassSessionInput {
 export interface MySession {
   id: Uuid;
   date: IsoDate;
+  /** S18: the caller's own slot for a student with a group; the whole span for instructors. */
   start_time: string;
   end_time: string;
   starts_at: IsoDateTime;
   ends_at: IsoDateTime;
   title: string;
   group_nos: number[];
+  /** S18: every slot of the session (start_time, end_time, group_nos), ordered by start. */
+  slots: { start_time: string; end_time: string; group_nos: number[] }[];
   deliverables: string[];
   /** `available` = visible to the caller now (only then link to /c/:id). */
   content: { id: Uuid; kind: ContentKind; title: string; available: boolean }[];
