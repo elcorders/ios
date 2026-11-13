@@ -8,6 +8,6 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env['CI'],
-    env: { VITE_API: 'mock', VITE_SW_DEV: 'off' },
+    env: { VITE_API: 'mock', VITE_SW_DEV: 'off', VITE_FEATURE_PUSH: 'on' },
   },
 });

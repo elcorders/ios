@@ -19,6 +19,6 @@ export default defineConfig({
     url: 'http://localhost:5173',
     reuseExistingServer: false,
     // VITE_SW_DEV off: the dev service worker (for local push tests) is not part of the e2e runs.
-    env: { VITE_API: 'supabase', VITE_SW_DEV: 'off' },
+    env: { VITE_API: 'supabase', VITE_SW_DEV: 'off', VITE_FEATURE_PUSH: 'on' },
   },
 });

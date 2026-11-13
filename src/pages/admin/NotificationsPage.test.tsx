@@ -11,12 +11,16 @@ function open() {
 }
 
 beforeEach(async () => {
+  vi.stubEnv('VITE_FEATURE_PUSH', 'on');
   resetMockAuth();
   resetMockPush();
   vi.stubGlobal('matchMedia', () => ({ matches: false }));
   await api.verifyEmailCode('admin@example.edu', '123456');
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 describe('admin notifications', () => {
   it('shows stats and the automatic-send note', async () => {
@@ -37,5 +41,13 @@ describe('admin notifications', () => {
     open();
     fireEvent.click(await screen.findByRole('button', { name: 'Send test to me' }));
     expect(await screen.findByText('Sent to 1 device(s).')).toBeInTheDocument();
+  });
+
+  it('is hidden when the push flag is off', async () => {
+    vi.stubEnv('VITE_FEATURE_PUSH', 'off');
+    open();
+    expect(await screen.findByRole('link', { name: 'Members' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Notifications' })).toBeNull();
+    expect(screen.queryByText(/Students with push/)).toBeNull();
   });
 });

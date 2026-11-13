@@ -8,7 +8,7 @@ import { _setDeferredPromptForTest, type BeforeInstallPromptEvent } from '../lib
 import { MOCK_COHORT } from '../api/mock/fixtures/s1';
 
 function open() {
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/'] })} />);
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/'] })} />);
 }
 
 beforeEach(() => {
@@ -55,7 +55,29 @@ describe('Home app tile', () => {
     expect(document.querySelector('section.stack-lg')!.firstElementChild).toBe(tile);
   });
 
+  it('hides the notifications tile when the push flag is off, or admin-only for a student', async () => {
+    vi.stubEnv('VITE_VAPID_PUBLIC_KEY', 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U');
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('standalone') }));
+    vi.stubGlobal('Notification', { permission: 'default', requestPermission: vi.fn() });
+    vi.stubGlobal('PushManager', class {});
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => null } }) },
+    });
+    await api.verifyEmailCode('student005@example.edu', '123456');
+    for (const flag of ['off', 'admin']) {
+      vi.stubEnv('VITE_FEATURE_PUSH', flag);
+      const { unmount } = open();
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(screen.queryByRole('button', { name: 'Turn on notifications' })).toBeNull();
+      unmount();
+    }
+    Reflect.deleteProperty(navigator, 'serviceWorker');
+  });
+
   it('offers notifications when standalone and permission is default, with confetti after enabling', async () => {
+    vi.stubEnv('VITE_FEATURE_PUSH', 'on');
     vi.stubEnv('VITE_VAPID_PUBLIC_KEY', 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U');
     vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('standalone') }));
     const N = { permission: 'default', requestPermission: vi.fn(async () => ((N.permission = 'granted'), 'granted')) };

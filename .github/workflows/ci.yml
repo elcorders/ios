@@ -65,6 +65,9 @@ jobs:
       VITE_API: supabase
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      # Web push (S16): public VAPID key; VITE_FEATURE_PUSH = on | admin | unset (off). Both optional.
+      VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+      VITE_FEATURE_PUSH: ${{ vars.VITE_FEATURE_PUSH }}
       VITE_COMMIT_SHA: ${{ github.sha }}
     steps:
       - name: Require production variables

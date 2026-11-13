@@ -15,6 +15,7 @@ import { PendingPage } from './PendingPage';
 import { ContentPage } from './ContentPage';
 import { ClassesPage } from './ClassesPage';
 import { NotificationsPage } from './NotificationsPage';
+import { pushEnabledFor } from '../../lib/features';
 import { TransfersPage } from './TransfersPage';
 import { onOpenCount } from './transfers/openCount';
 
@@ -131,7 +132,7 @@ function AdminArea() {
           <NavLink to="/admin/lab">Lab</NavLink>
           <NavLink to="/admin/content">Content</NavLink>
           <NavLink to="/admin/classes">Classes</NavLink>
-          <NavLink to="/admin/notifications">Notifications</NavLink>
+          {pushEnabledFor(true) ? <NavLink to="/admin/notifications">Notifications</NavLink> : null}
           <NavLink to="/admin/import">Import</NavLink>
         </nav>
         <Routes>
@@ -146,7 +147,7 @@ function AdminArea() {
           <Route path="lab/*" element={<LabAdminPage />} />
           <Route path="content" element={<ContentPage />} />
           <Route path="classes" element={<ClassesPage />} />
-          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="notifications" element={pushEnabledFor(true) ? <NotificationsPage /> : <Navigate to="members" replace />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>

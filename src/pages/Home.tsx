@@ -7,6 +7,7 @@ import { api } from '../api';
 import type { MyEnrolment, MyLab, MySession } from '../api/types';
 import { detectPlatform, isStandalone, useInstallPrompt } from '../lib/pwa';
 import { usePushState } from '../lib/push';
+import { pushEnabledFor } from '../lib/features';
 import { formatColombo } from '../lib/time';
 import './home.css';
 
@@ -22,7 +23,7 @@ function celebrateOnce(): void {
   fireConfetti();
 }
 
-function AppTile() {
+function AppTile({ pushOn }: { pushOn: boolean }) {
   const { canInstall, install } = useInstallPrompt();
   const push = usePushState();
   const platform = detectPlatform(navigator.userAgent, navigator.maxTouchPoints);
@@ -51,7 +52,7 @@ function AppTile() {
         <h2>Install the app</h2>
         {canInstall ? (
           <>
-            <p className="muted">Add it to your device for quick access and class notifications.</p>
+            <p className="muted">{pushOn ? 'Add it to your device for quick access and class notifications.' : 'Add it to your device for quick access.'}</p>
             <div className="app-tile-actions">
               <button type="button" className="primary" onClick={() => void install()}>Install</button>
               <Link to="/install">More help</Link>
@@ -59,7 +60,7 @@ function AppTile() {
           </>
         ) : platform === 'ios-safari' ? (
           <>
-            <p className="muted">Install it to get class notifications:</p>
+            <p className="muted">{pushOn ? 'Install it to get class notifications:' : 'Install it on your iPhone or iPad:'}</p>
             <ol className="install-steps">
               <li>Tap the Share button in Safari</li>
               <li>Choose Add to Home Screen</li>
@@ -82,6 +83,7 @@ function AppTile() {
     );
   }
 
+  if (!pushOn) return null;
   if (push.support === 'unsupported' || push.support === 'needs_install' || push.subscribed === null) return null;
 
   if (push.support === 'denied') {
@@ -217,7 +219,7 @@ export function Home() {
   const students = me.enrolments.filter((e) => e.role === 'student' && e.status === 'active' && e.cohort_status === 'active');
   return (
     <section className="stack-lg">
-      <AppTile />
+      <AppTile pushOn={pushEnabledFor(me.is_admin)} />
       <div className="card hero">
         <p className="eyebrow">Welcome back{me.profile.first_name ? `, ${me.profile.first_name}` : ''}</p>
         <h1>Home</h1>

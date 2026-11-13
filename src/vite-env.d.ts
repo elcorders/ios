@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_VAPID_PUBLIC_KEY?: string;
   /** `on` registers the service worker in dev. */
   readonly VITE_SW_DEV?: string;
+  /** Push UI: `on` (everyone), `admin` (admins only), else off. See src/lib/features.ts. */
+  readonly VITE_FEATURE_PUSH?: string;
 }
 
 /** ISO build timestamp injected by vite `define`. */
