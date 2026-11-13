@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       audit_log: {
@@ -189,14 +164,17 @@ export type Database = {
         Row: {
           group_id: string
           session_id: string
+          slot_id: string
         }
         Insert: {
           group_id: string
           session_id: string
+          slot_id: string
         }
         Update: {
           group_id?: string
           session_id?: string
+          slot_id?: string
         }
         Relationships: [
           {
@@ -208,6 +186,45 @@ export type Database = {
           },
           {
             foreignKeyName: "class_session_groups_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_session_groups_slot_fk"
+            columns: ["slot_id", "session_id"]
+            isOneToOne: false
+            referencedRelation: "class_session_slots"
+            referencedColumns: ["id", "session_id"]
+          },
+        ]
+      }
+      class_session_slots: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          session_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          session_id: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          session_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_session_slots_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "class_sessions"
@@ -1424,6 +1441,7 @@ export type Database = {
           p_group_nos: number[]
           p_id: string
           p_lab_block_until: string
+          p_slots?: Json
           p_start_time: string
           p_title: string
         }
@@ -1520,7 +1538,17 @@ export type Database = {
         Returns: Json
       }
       class_session_my_json: {
-        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Args: {
+          p_s: Database["public"]["Tables"]["class_sessions"]["Row"]
+          p_slot_id: string
+        }
+        Returns: Json
+      }
+      class_session_slots_json: {
+        Args: {
+          p_admin: boolean
+          p_s: Database["public"]["Tables"]["class_sessions"]["Row"]
+        }
         Returns: Json
       }
       class_session_start: {
@@ -1548,6 +1576,20 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      class_slot_end: {
+        Args: {
+          p_s: Database["public"]["Tables"]["class_sessions"]["Row"]
+          p_sl: Database["public"]["Tables"]["class_session_slots"]["Row"]
+        }
+        Returns: string
+      }
+      class_slot_start: {
+        Args: {
+          p_s: Database["public"]["Tables"]["class_sessions"]["Row"]
+          p_sl: Database["public"]["Tables"]["class_session_slots"]["Row"]
+        }
+        Returns: string
       }
       cohort_json: {
         Args: { c: Database["public"]["Tables"]["cohorts"]["Row"] }
@@ -2069,9 +2111,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       booking_status: [
