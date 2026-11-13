@@ -4,6 +4,7 @@ import { api } from '../api';
 import type { MyNotification } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { pushEnabledFor } from '../lib/features';
+import { notifyUnreadChanged } from '../lib/unread';
 import { messageFor } from '../lib/errors';
 import { formatColombo } from '../lib/time';
 
@@ -70,11 +71,15 @@ export function Notifications() {
     if (r.ok) {
       const at = new Date().toISOString();
       setItems((items ?? []).map((n) => (n.read_at ? n : { ...n, read_at: at })));
+      notifyUnreadChanged();
     } else setError(messageFor(r.error));
   }
 
   async function open(n: MyNotification) {
-    if (!n.read_at) await api.markNotificationsRead([n.id]);
+    if (!n.read_at) {
+      await api.markNotificationsRead([n.id]);
+      notifyUnreadChanged();
+    }
     navigate(hashPathOf(n.url));
   }
 

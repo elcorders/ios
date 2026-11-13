@@ -27,7 +27,8 @@ test('admin uploads + schedules a tutorial: hidden from students until published
   await a.getByRole('button', { name: `Schedule ${TITLE}` }).click();
   const tomorrow = new Date(Date.now() + 5.5 * 3600_000 + 86_400_000).toISOString().slice(0, 16); // Colombo wall clock + 1 day
   await a.getByRole('dialog').locator('input[type="datetime-local"]').fill(tomorrow);
-  await a.getByRole('dialog').getByRole('button', { name: /Schedule|Save/ }).last().click();
+  await a.getByRole('dialog').getByRole('button', { name: /^(Schedule|Save)$/ }).click();
+  await a.getByRole('button', { name: 'Schedule without notifying' }).click();
   await expect(row).toContainText('Scheduled');
 
   const { data: item } = await serviceClient().from('content_items').select('id, published_at').eq('title', TITLE).single();
@@ -53,6 +54,7 @@ test('admin uploads + schedules a tutorial: hidden from students until published
 
   // Admin publishes now -> student sees it and the sandboxed page works.
   await a.getByRole('button', { name: `Publish now ${TITLE}` }).click();
+  await a.getByRole('button', { name: 'Publish without notifying' }).click();
   await expect(row).toContainText('Published');
   await s.goto('/#/tutorials');
   await s.getByRole('link', { name: new RegExp(TITLE) }).click();

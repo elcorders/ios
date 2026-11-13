@@ -128,3 +128,14 @@ describe('header bell', () => {
     expect(screen.queryByRole('link', { name: /^Notifications/ })).toBeNull();
   });
 });
+
+describe('bell badge after mark all read', () => {
+  it('drops the unread count without a route change', async () => {
+    vi.stubEnv('VITE_FEATURE_PUSH', 'on');
+    await api.verifyEmailCode('student005@example.edu', '123456');
+    render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/notifications'] })} />);
+    expect(await screen.findByRole('link', { name: /Notifications, 2 unread/ })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    expect(await screen.findByRole('link', { name: 'Notifications' })).toBeInTheDocument();
+  });
+});

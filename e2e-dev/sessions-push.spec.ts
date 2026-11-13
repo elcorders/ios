@@ -137,7 +137,7 @@ test('class sessions release materials per group, Home shows next session, lab b
   expect((await asAdmin.rpc('admin_push_test')).error?.message).toBe('no_devices');
   expect((await asStudent.rpc('save_push_subscription', fakeSubscription('s'))).error).toBeNull();
   expect((await asAdmin.rpc('save_push_subscription', fakeSubscription('a'))).error).toBeNull();
-  expect((await asStudent.rpc('get_my_push')).data).toEqual({ devices: 1 });
+  expect((await asStudent.rpc('get_my_push')).data).toMatchObject({ devices: 1 });
   const stats = (await asAdmin.rpc('admin_push_stats')).data as { devices: number; students_with_push: number };
   expect(stats.devices).toBeGreaterThanOrEqual(2);
   expect(stats.students_with_push).toBeGreaterThanOrEqual(1);

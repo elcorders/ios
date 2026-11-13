@@ -360,8 +360,10 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["content_kind"]
           library_id: string | null
+          notify_on_release: boolean
           position: number
           published_at: string | null
+          release_notified_at: string | null
           summary: string | null
           title: string
           updated_at: string
@@ -375,8 +377,10 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["content_kind"]
           library_id?: string | null
+          notify_on_release?: boolean
           position?: number
           published_at?: string | null
+          release_notified_at?: string | null
           summary?: string | null
           title: string
           updated_at?: string
@@ -390,8 +394,10 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["content_kind"]
           library_id?: string | null
+          notify_on_release?: boolean
           position?: number
           published_at?: string | null
+          release_notified_at?: string | null
           summary?: string | null
           title?: string
           updated_at?: string
@@ -970,14 +976,46 @@ export type Database = {
         }
         Relationships: []
       }
+      push_kind_settings: {
+        Row: {
+          enabled: boolean
+          kind: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          kind: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          kind?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_kind_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_outbox: {
         Row: {
           attempts: number
           body: string
           created_at: string
+          dedupe_key: string | null
           id: string
           kind: string
           last_error: string | null
+          read_at: string | null
+          ref_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["outbox_status"]
           title: string
@@ -988,9 +1026,12 @@ export type Database = {
           attempts?: number
           body: string
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           kind: string
           last_error?: string | null
+          read_at?: string | null
+          ref_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["outbox_status"]
           title: string
@@ -1001,9 +1042,12 @@ export type Database = {
           attempts?: number
           body?: string
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           kind?: string
           last_error?: string | null
+          read_at?: string | null
+          ref_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["outbox_status"]
           title?: string
@@ -1317,6 +1361,10 @@ export type Database = {
         Args: { p_enrolment_id: string }
         Returns: Json
       }
+      admin_closure_impact: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       admin_copy_tutorials: {
         Args: { p_from_cohort_id: string; p_to_cohort_id: string }
         Returns: Json
@@ -1382,6 +1430,21 @@ export type Database = {
         Args: { p_enrolment_id: string; p_group_no: number; p_note?: string }
         Returns: Json
       }
+      admin_push_audience: {
+        Args: { p_cohort_id: string; p_group_nos?: number[] }
+        Returns: Json
+      }
+      admin_push_custom: {
+        Args: {
+          p_body: string
+          p_cohort_id: string
+          p_group_nos: number[]
+          p_title: string
+          p_url?: string
+        }
+        Returns: Json
+      }
+      admin_push_log: { Args: never; Returns: Json }
       admin_push_stats: { Args: never; Returns: Json }
       admin_push_test: { Args: never; Returns: Json }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }
@@ -1390,7 +1453,7 @@ export type Database = {
         Returns: Json
       }
       admin_set_content_publish: {
-        Args: { p_id: string; p_published_at?: string }
+        Args: { p_id: string; p_notify?: boolean; p_published_at?: string }
         Returns: Json
       }
       admin_set_enrolment_status: {
@@ -1410,6 +1473,10 @@ export type Database = {
           p_pending_id: string
           p_status: Database["public"]["Enums"]["pending_status"]
         }
+        Returns: Json
+      }
+      admin_set_push_kind: {
+        Args: { p_enabled: boolean; p_kind: string }
         Returns: Json
       }
       admin_transfer_row_json: {
@@ -1441,6 +1508,7 @@ export type Database = {
           p_group_nos: number[]
           p_id: string
           p_lab_block_until: string
+          p_notify_content_ids?: string[]
           p_slots?: Json
           p_start_time: string
           p_title: string
@@ -1619,6 +1687,13 @@ export type Database = {
         Args: { p_item: Database["public"]["Tables"]["content_items"]["Row"] }
         Returns: string
       }
+      content_visible_from_user: {
+        Args: {
+          p_item: Database["public"]["Tables"]["content_items"]["Row"]
+          p_user: string
+        }
+        Returns: string
+      }
       delete_push_subscription: { Args: { p_endpoint: string }; Returns: Json }
       deliverables_ok: { Args: { p_items: string[] }; Returns: boolean }
       email_change_check: {
@@ -1728,6 +1803,10 @@ export type Database = {
         }
         Returns: string
       }
+      lab_withdraw_for_closure: {
+        Args: { p_date: string; p_reason: string }
+        Returns: number
+      }
       library_detail_json: {
         Args: { p_lib: Database["public"]["Tables"]["content_library"]["Row"] }
         Returns: Json
@@ -1742,6 +1821,10 @@ export type Database = {
       }
       list_content: {
         Args: { p_kind: Database["public"]["Enums"]["content_kind"] }
+        Returns: Json
+      }
+      list_my_notifications: {
+        Args: { p_before?: string; p_limit?: number }
         Returns: Json
       }
       lms_landing: {
@@ -1760,6 +1843,7 @@ export type Database = {
         Args: { m: Database["public"]["Tables"]["macs"]["Row"] }
         Returns: Json
       }
+      mark_notifications_read: { Args: { p_ids?: string[] }; Returns: Json }
       member_json: {
         Args: { e: Database["public"]["Tables"]["enrolments"]["Row"] }
         Returns: Json
@@ -1827,6 +1911,10 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: Json
       }
+      push_audience_ids: {
+        Args: { p_cohort_id: string; p_group_nos: number[] }
+        Returns: string[]
+      }
       push_claim: {
         Args: { p_limit: number }
         Returns: {
@@ -1843,7 +1931,9 @@ export type Database = {
       push_enqueue: {
         Args: {
           p_body: string
+          p_dedupe_key?: string
           p_kind: string
+          p_ref_id?: string
           p_title: string
           p_url: string
           p_user_id: string
@@ -1859,10 +1949,19 @@ export type Database = {
         Returns: Json
       }
       push_pending_count: { Args: never; Returns: number }
+      push_runs: {
+        Args: { p_slots: string[] }
+        Returns: {
+          re: string
+          rs: string
+        }[]
+      }
       push_subscription_result: {
         Args: { p_gone: boolean; p_id: string; p_ok: boolean }
         Returns: Json
       }
+      push_tick: { Args: { p_now?: string }; Returns: Json }
+      push_trunc: { Args: { p_max: number; p_text: string }; Returns: string }
       request_transfer: {
         Args: {
           p_cohort_id: string
