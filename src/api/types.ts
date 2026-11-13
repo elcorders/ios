@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -337,6 +337,8 @@ export interface AdminContentRow {
   updated_at: IsoDateTime;
   /** §S14: number of class sessions linking this item. */
   linked_sessions: number;
+  /** S19: notify students when it opens (tutorial/material). */
+  notify_on_release: boolean;
   /** §S14: earliest linked session start still in the future, else null. */
   release_at: IsoDateTime | null;
   /** §S17: library + version of this cohort link (null for resources). */
@@ -375,7 +377,8 @@ export interface S6Api {
   adminGetContent(id: Uuid): Promise<Result<AdminContentItem>>;
   adminUpsertContent(input: UpsertContentInput): Promise<Result<AdminContentRow>>;
   /** null = unpublish; <= now = publish now; future = schedule. */
-  adminSetContentPublish(id: Uuid, publishedAt: IsoDateTime | null): Promise<Result<AdminContentRow>>;
+  /** S19: `notify` = notify students when it opens (tutorial/material only; default false). */
+  adminSetContentPublish(id: Uuid, publishedAt: IsoDateTime | null, notify?: boolean): Promise<Result<AdminContentRow>>;
   adminDeleteContent(id: Uuid): Promise<Result<{ ok: true }>>;
   adminCopyTutorials(fromCohortId: Uuid, toCohortId: Uuid): Promise<Result<{ copied: number }>>;
 }
@@ -682,7 +685,8 @@ export interface S3Api {
   getLabHours(): Promise<Result<LabHours[]>>;
   adminSetLabHours(hours: LabHours[]): Promise<Result<LabHours[]>>;
   listClosures(from: IsoDate, to: IsoDate): Promise<Result<Closure[]>>;
-  adminAddClosures(items: ClosureInput[]): Promise<Result<{ added: number; updated: number }>>;
+  /** S19: `withdrawn` = future bookings on those dates withdrawn (credits back, students notified). */
+  adminAddClosures(items: ClosureInput[]): Promise<Result<{ added: number; updated: number; withdrawn: number }>>;
   adminDeleteClosure(id: Uuid, wholeRange?: boolean): Promise<Result<{ ok: true; deleted: number }>>;
   adminListLabBookings(from: IsoDate, to: IsoDate): Promise<Result<LabBookingRow[]>>;
   adminLabCredits(cohortId: Uuid): Promise<Result<LabCreditRow[]>>;
@@ -700,7 +704,7 @@ export interface ClosureRangeInput {
 }
 
 export interface S13Api {
-  adminAddClosureRange(input: ClosureRangeInput): Promise<Result<{ added: number; updated: number; range_id: Uuid }>>;
+  adminAddClosureRange(input: ClosureRangeInput): Promise<Result<{ added: number; updated: number; range_id: Uuid; withdrawn: number }>>;
 }
 
 // ───────────────────────── S14 — Class materials + class sessions (CONTRACT.md §S14) ─────────────────────────
@@ -722,7 +726,8 @@ export interface ClassSession {
   deliverables: string[];
   /** "HH:MM", "24:00" (whole day) or null (doesn't block the lab). */
   lab_block_until: string | null;
-  content: { id: Uuid; kind: ContentKind; title: string; status: ContentStatus }[];
+  /** S19: `notify` = the item's notify_on_release. */
+  content: { id: Uuid; kind: ContentKind; title: string; status: ContentStatus; notify: boolean }[];
 }
 
 /** S18: a time slot inside a class session; each group is in at most one slot. */
@@ -752,6 +757,8 @@ export interface ClassSessionInput {
   deliverables: string[];
   lab_block_until: string | null;
   content_ids: Uuid[];
+  /** S19: subset of content_ids to notify students about when they open (others linked here are set to not notify). */
+  notify_content_ids: Uuid[];
 }
 
 export interface MySession {
@@ -799,12 +806,15 @@ export interface PushStats {
   students: number;
   students_with_push: number;
   queued: number;
+  /** S19: per-kind on/off switches. */
+  kinds: { kind: PushKind; enabled: boolean }[];
 }
 
 export interface S16Api {
   savePushSubscription(sub: PushSubscriptionInput): Promise<Result<{ id: Uuid }>>;
   deletePushSubscription(endpoint: string): Promise<Result<{ ok: true }>>;
-  getMyPush(): Promise<Result<{ devices: number }>>;
+  /** S19: + `unread` notifications in the inbox. */
+  getMyPush(): Promise<Result<{ devices: number; unread: number }>>;
   adminPushStats(): Promise<Result<PushStats>>;
   adminPushTest(): Promise<Result<{ queued: number }>>;
   adminPushSend(): Promise<Result<{ sent: number; failed: number; skipped: number; remaining: number }>>;
@@ -855,4 +865,68 @@ export interface S17Api {
   adminSetLinkVersions(versionId: Uuid, contentIds: Uuid[]): Promise<Result<{ updated: number }>>;
   adminLinkLibrary(id: Uuid, cohortId: Uuid, versionId: Uuid | null, position: number): Promise<Result<AdminContentRow>>;
   adminDeleteLibrary(id: Uuid): Promise<Result<{ ok: true }>>;
+}
+
+// ───────────────────────── S19 — Notifications (CONTRACT.md §S19) ─────────────────────────
+
+export type PushKind =
+  | 'test'
+  | 'class_reminder'
+  | 'content_released'
+  | 'booking_confirmed'
+  | 'booking_reminder'
+  | 'booking_soon'
+  | 'group_changed'
+  | 'lab_closed'
+  | 'no_show'
+  | 'custom';
+
+/** One notification in the student's inbox (every targeted student gets one, with or without a device). */
+export interface MyNotification {
+  id: Uuid;
+  kind: PushKind;
+  title: string;
+  body: string;
+  /** Same-site path, e.g. "/#/lab?b=<booking id>", or null. */
+  url: string | null;
+  created_at: IsoDateTime;
+  read_at: IsoDateTime | null;
+}
+
+export interface CustomPushInput {
+  cohort_id: Uuid;
+  /** null = every student of the cohort; else students in these groups. */
+  group_nos: number[] | null;
+  title: string;
+  body: string;
+  url: string | null;
+}
+
+export interface PushAudience {
+  students: number;
+  with_push: number;
+}
+
+export interface PushLogRow {
+  kind: PushKind;
+  title: string;
+  /** First row's created_at of the batch (same kind + title + minute). */
+  created_at: IsoDateTime;
+  total: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  queued: number;
+}
+
+export interface S19Api {
+  listMyNotifications(before?: IsoDateTime | null): Promise<Result<{ items: MyNotification[]; has_more: boolean }>>;
+  /** null = mark all read. */
+  markNotificationsRead(ids: Uuid[] | null): Promise<Result<{ updated: number }>>;
+  adminSetPushKind(kind: PushKind, enabled: boolean): Promise<Result<{ kind: PushKind; enabled: boolean }>>;
+  adminPushAudience(cohortId: Uuid, groupNos: number[] | null): Promise<Result<PushAudience>>;
+  adminPushCustom(input: CustomPushInput): Promise<Result<{ queued: number; with_push: number }>>;
+  adminPushLog(): Promise<Result<PushLogRow[]>>;
+  /** Preview before adding a closure: future booked bookings on those dates. */
+  adminClosureImpact(from: IsoDate, to: IsoDate): Promise<Result<{ bookings: number; students: number }>>;
 }
