@@ -39,7 +39,7 @@ th[aria-sort='ascending'], th[aria-sort='descending'] { color: var(--text); }
 .menu-item.danger { color: var(--danger); }
 
 .bulk-bar {
-  position: sticky; bottom: 0.75rem; z-index: 5; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center;
+  position: sticky; bottom: calc(var(--bottom-inset, 0px) + 0.75rem); z-index: 5; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center;
   padding: 0.625rem 0.875rem; background: var(--surface); border: 1px solid var(--accent);
   border-radius: var(--radius-sm); box-shadow: var(--shadow);
 }

@@ -102,6 +102,23 @@ describe('mock admin push', () => {
     expect(must(await api.listMyNotifications()).items[0]).toMatchObject({ title: 'Hello', url: '/#/lab', read_at: null });
   });
 
+  it('one student: recipients list, audience and send (S20)', async () => {
+    await asAdmin();
+    const list = must(await api.adminPushRecipients(C));
+    expect(list.length).toBe(must(await api.adminPushAudience(C, null)).students);
+    const one = list.find((r) => r.email === 'student005@example.edu')!;
+    expect(one).toMatchObject({ index_no: 'COBSCCOMP251P-005', with_push: false });
+    expect(must(await api.adminPushAudience(C, null, one.user_id))).toEqual({ students: 1, with_push: 0 });
+    expect((await api.adminPushAudience(C, [1], one.user_id)).ok).toBe(false);
+    expect((await api.adminPushAudience(C, null, 'nope')).ok).toBe(false);
+    expect(must(await api.adminPushCustom({ cohort_id: C, group_nos: null, user_id: one.user_id, title: 'Only you', body: 'b', url: null })).queued).toBe(1);
+    await asStudent(5);
+    expect(must(await api.listMyNotifications()).items[0]).toMatchObject({ title: 'Only you' });
+    await asStudent(1);
+    expect(must(await api.listMyNotifications()).items.some((n) => n.title === 'Only you')).toBe(false);
+    expect((await api.adminPushRecipients(C)).ok).toBe(false);
+  });
+
   it('a disabled kind enqueues nothing', async () => {
     await asAdmin();
     await api.adminSetPushKind('custom', false);

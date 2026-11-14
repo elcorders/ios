@@ -200,153 +200,158 @@ export function Lab() {
   const atMax = picked.length >= MAX_PICK;
 
   return (
-    <section className="stack-lg lab-page">
-      <div className="card stack">
-        <h1>Lab booking</h1>
-        <Link to="/">Back to Home</Link>
-        {!lab.eligible ? (
-          <p role="status" className="lab-reason">{REASON_TEXT[lab.reason ?? 'not_student']}</p>
-        ) : (
-          <>
-            <dl className="lab-stats">
-              <div><dt>Credits left</dt><dd>{lab.credits.remaining} of {lab.credits.allowance}</dd></div>
-              <div><dt>This week</dt><dd>{lab.week.hours} of {lab.week.cap} hours</dd></div>
-              <div><dt>Credit period</dt><dd>{fmtDate(lab.cycle.start)} to {fmtDate(lab.cycle.end)}</dd></div>
-            </dl>
-            {lab.credits.penalty > 0 ? (
-              <p className="muted lab-penalty">
-                −{lab.credits.penalty} credits for {lab.no_shows} missed {lab.no_shows === 1 ? 'booking' : 'bookings'}. Attend your next booking to get them back.
-              </p>
-            ) : null}
-            <p className="muted lab-pref">
-              Preferred Mac: <strong>{lab.preferred_mac_no ? `Mac ${lab.preferred_mac_no}` : 'No preference'}</strong>{' '}
-              <button type="button" className="inline" onClick={() => { setMacChoice(lab.preferred_mac_id ?? ''); setDialogError(null); setMacPrompt(true); }}>
-                Change
-              </button>
-            </p>
-          </>
-        )}
-      </div>
-
-      {lab.eligible ? (
-        <div className="card stack">
-          <h2>Pick your times</h2>
-          <p className="muted">Times are Sri Lanka time. You can book up to {MAX_PICK} slots at once.</p>
-          <div className="lab-days" role="group" aria-label="Day">
-            {days.map((d) => {
-              const label = fmtDay(d.date);
-              return (
-                <button
-                  key={d.date}
-                  type="button"
-                  className={`lab-day${d.open ? '' : ' lab-day-closed'}`}
-                  aria-pressed={d.date === activeDay}
-                  onClick={() => setDay(d.date)}
-                >
-                  <span>{label}</span>
-                  <DayChip day={d} />
+    <section className="lab-page">
+      <div className="lab-aside">
+        <div className="card stack lab-summary">
+          <h1>Lab booking</h1>
+          <Link to="/">Back to Home</Link>
+          {!lab.eligible ? (
+            <p role="status" className="lab-reason">{REASON_TEXT[lab.reason ?? 'not_student']}</p>
+          ) : (
+            <>
+              <dl className="lab-stats">
+                <div><dt>Credits left</dt><dd>{lab.credits.remaining} of {lab.credits.allowance}</dd></div>
+                <div><dt>This week</dt><dd>{lab.week.hours} of {lab.week.cap} hours</dd></div>
+                <div><dt>Credit period</dt><dd>{fmtDate(lab.cycle.start)} to {fmtDate(lab.cycle.end)}</dd></div>
+              </dl>
+              {lab.credits.penalty > 0 ? (
+                <p className="muted lab-penalty">
+                  −{lab.credits.penalty} credits for {lab.no_shows} missed {lab.no_shows === 1 ? 'booking' : 'bookings'}. Attend your next booking to get them back.
+                </p>
+              ) : null}
+              <p className="muted lab-pref">
+                Preferred Mac: <strong>{lab.preferred_mac_no ? `Mac ${lab.preferred_mac_no}` : 'No preference'}</strong>{' '}
+                <button type="button" className="inline" onClick={() => { setMacChoice(lab.preferred_mac_id ?? ''); setDialogError(null); setMacPrompt(true); }}>
+                  Change
                 </button>
-              );
-            })}
-          </div>
+              </p>
+            </>
+          )}
+        </div>
 
-          {dayData && !dayData.open ? (
-            <p className="muted" role="status">
-              The lab is closed on {fmtDay(dayData.date)}
-              {dayData.closure?.reason ? `: ${dayData.closure.reason}` : dayData.closure ? `: ${CLOSURE_LABEL[dayData.closure.kind]}` : ''}.
-            </p>
-          ) : null}
-
-          {dayData && dayData.open ? (
-            <ul className="lab-slots" aria-label={`Slots on ${fmtDay(dayData.date)}`}>
-              {dayData.slots.map((s) => {
-                const past = Date.parse(s.start) <= now;
-                const mine = myStarts.has(Date.parse(s.start));
-                const checked = picked.includes(s.start);
-                const off = past || s.full || s.blocked || mine || (!checked && atMax);
-                const status = mine
-                  ? 'Booked by you'
-                  : s.blocked
-                    ? (blockText(dayData.block_until) ?? 'Class')
-                    : past
-                      ? 'Past'
-                      : s.level
-                        ? LEVEL_LABEL[s.level]
-                        : '';
+        <div className="card stack lab-mine">
+          <h2>My bookings</h2>
+          {upcoming.length === 0 ? (
+            <p className="muted">No bookings in this credit period.</p>
+          ) : (
+            <ul className="lab-bookings" aria-label="My bookings">
+              {upcoming.map((b) => {
+                const future = Date.parse(b.slot_start) > now;
                 return (
-                  <li key={s.start}>
-                    <label className={`lab-slot${off ? ' lab-slot-off' : ''}`}>
-                      <input type="checkbox" checked={checked} disabled={off} onChange={() => toggle(s.start)} />
-                      <span className="lab-slot-time">{fmtTime(s.start)} to {fmtTime(s.end)}</span>
-                      {s.level && !mine && !past && !s.blocked ? (
-                        <span className={`lab-level lab-level-${s.level}`}>{status}</span>
-                      ) : (
-                        <span className="lab-slot-status muted">{status}</span>
-                      )}
-                    </label>
+                  <li key={b.id} id={`booking-${b.id}`} className={b.id === wantedBooking ? 'lab-booking-target' : undefined}>
+                    <span>
+                      <strong>{fmtDayTime(b.slot_start)}</strong> to {fmtTime(b.slot_end)}
+                      {b.preferred_mac_no ? <span className="muted"> · Mac {b.preferred_mac_no}</span> : null}
+                    </span>
+                    <span className="badge">{STATUS_LABEL[b.status]}</span>
+                    {b.status === 'booked' && future ? (
+                      <button type="button" aria-label={`Withdraw booking ${fmtDayTime(b.slot_start)}`} onClick={() => { setDialogError(null); setWithdrawing(b); }}>
+                        Withdraw
+                      </button>
+                    ) : null}
                   </li>
                 );
               })}
             </ul>
-          ) : null}
-
-          {pageError ? <p role="alert" className="error">{pageError}</p> : null}
-          <div className="lab-bar">
-            <span aria-live="polite">{picked.length} selected</span>
-            <button type="button" className="primary" disabled={picked.length === 0 || busy} onClick={() => { setDialogError(null); setConfirming(true); }}>
-              Book {picked.length || ''} {picked.length === 1 ? 'slot' : 'slots'}
-            </button>
-          </div>
+          )}
         </div>
-      ) : null}
 
-      {notice ? (
-        <div className="card stack" role="status" aria-label="Booking result">
-          <h2>{notice.count === 1 ? 'Booked 1 slot' : `Booked ${notice.count} slots`}</h2>
-          {notice.warnings.map((w) => (
-            <div key={w.slot_start} className="lab-warning stack">
-              <p>
-                Someone else who prefers the same Mac is booked at {fmtDayTime(w.slot_start)}. You can keep it, or move to a different time.
-              </p>
-              {w.suggestions.length > 0 ? (
-                <div className="row">
-                  {w.suggestions.map((s) => (
-                    <button key={s} type="button" disabled={busy} onClick={() => void book([s], false)} aria-label={`Also book ${fmtDayTime(s)}`}>
-                      {fmtTime(s)}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+      </div>
+      <div className="lab-main">
+        {lab.eligible ? (
+          <div className="card stack lab-picker">
+            <h2>Pick your times</h2>
+            <p className="muted">Times are Sri Lanka time. You can book up to {MAX_PICK} slots at once.</p>
+            <div className="lab-days" role="group" aria-label="Day">
+              {days.map((d) => {
+                const label = fmtDay(d.date);
+                return (
+                  <button
+                    key={d.date}
+                    type="button"
+                    className={`lab-day${d.open ? '' : ' lab-day-closed'}`}
+                    aria-pressed={d.date === activeDay}
+                    onClick={() => setDay(d.date)}
+                  >
+                    <span>{label}</span>
+                    <DayChip day={d} />
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      ) : null}
 
-      <div className="card stack">
-        <h2>My bookings</h2>
-        {upcoming.length === 0 ? (
-          <p className="muted">No bookings in this credit period.</p>
-        ) : (
-          <ul className="lab-bookings" aria-label="My bookings">
-            {upcoming.map((b) => {
-              const future = Date.parse(b.slot_start) > now;
-              return (
-                <li key={b.id} id={`booking-${b.id}`} className={b.id === wantedBooking ? 'lab-booking-target' : undefined}>
-                  <span>
-                    <strong>{fmtDayTime(b.slot_start)}</strong> to {fmtTime(b.slot_end)}
-                    {b.preferred_mac_no ? <span className="muted"> · Mac {b.preferred_mac_no}</span> : null}
-                  </span>
-                  <span className="badge">{STATUS_LABEL[b.status]}</span>
-                  {b.status === 'booked' && future ? (
-                    <button type="button" aria-label={`Withdraw booking ${fmtDayTime(b.slot_start)}`} onClick={() => { setDialogError(null); setWithdrawing(b); }}>
-                      Withdraw
-                    </button>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+            {dayData && !dayData.open ? (
+              <p className="muted" role="status">
+                The lab is closed on {fmtDay(dayData.date)}
+                {dayData.closure?.reason ? `: ${dayData.closure.reason}` : dayData.closure ? `: ${CLOSURE_LABEL[dayData.closure.kind]}` : ''}.
+              </p>
+            ) : null}
+
+            {dayData && dayData.open ? (
+              <ul className="lab-slots" aria-label={`Slots on ${fmtDay(dayData.date)}`}>
+                {dayData.slots.map((s) => {
+                  const past = Date.parse(s.start) <= now;
+                  const mine = myStarts.has(Date.parse(s.start));
+                  const checked = picked.includes(s.start);
+                  const off = past || s.full || s.blocked || mine || (!checked && atMax);
+                  const status = mine
+                    ? 'Booked by you'
+                    : s.blocked
+                      ? (blockText(dayData.block_until) ?? 'Class')
+                      : past
+                        ? 'Past'
+                        : s.level
+                          ? LEVEL_LABEL[s.level]
+                          : '';
+                  return (
+                    <li key={s.start}>
+                      <label className={`lab-slot${off ? ' lab-slot-off' : ''}`}>
+                        <input type="checkbox" checked={checked} disabled={off} onChange={() => toggle(s.start)} />
+                        <span className="lab-slot-time">{fmtTime(s.start)} to {fmtTime(s.end)}</span>
+                        {s.level && !mine && !past && !s.blocked ? (
+                          <span className={`lab-level lab-level-${s.level}`}>{status}</span>
+                        ) : (
+                          <span className="lab-slot-status muted">{status}</span>
+                        )}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+
+            {pageError ? <p role="alert" className="error">{pageError}</p> : null}
+            <div className="lab-bar">
+              <span aria-live="polite">{picked.length} selected</span>
+              <button type="button" className="primary" disabled={picked.length === 0 || busy} onClick={() => { setDialogError(null); setConfirming(true); }}>
+                Book {picked.length || ''} {picked.length === 1 ? 'slot' : 'slots'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {notice ? (
+          <div className="card stack lab-notice" role="status" aria-label="Booking result">
+            <h2>{notice.count === 1 ? 'Booked 1 slot' : `Booked ${notice.count} slots`}</h2>
+            {notice.warnings.map((w) => (
+              <div key={w.slot_start} className="lab-warning stack">
+                <p>
+                  Someone else who prefers the same Mac is booked at {fmtDayTime(w.slot_start)}. You can keep it, or move to a different time.
+                </p>
+                {w.suggestions.length > 0 ? (
+                  <div className="row">
+                    {w.suggestions.map((s) => (
+                      <button key={s} type="button" disabled={busy} onClick={() => void book([s], false)} aria-label={`Also book ${fmtDayTime(s)}`}>
+                        {fmtTime(s)}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
       </div>
 
       {confirming ? (
@@ -428,7 +433,7 @@ function AdminLabPreview() {
   const activeDay = day && days.some((d) => d.date === day) ? day : ((days.find((d) => d.open) ?? days[0])?.date ?? null);
   const dayData = days.find((d) => d.date === activeDay) ?? null;
   return (
-    <section className="stack-lg lab-page">
+    <section className="stack-lg lab-page lab-page-single">
       <div className="card stack">
         <h1>Lab booking</h1>
         <Link to="/">Back to Home</Link>

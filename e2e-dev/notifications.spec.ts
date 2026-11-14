@@ -59,6 +59,17 @@ test('notifications: booking confirmed, custom message, closure withdraw, class 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect((await inbox()).find((n) => n.kind === 'custom')).toMatchObject({ title: 'E2E custom title', body: 'E2E custom body' });
 
+  // 2b. S20: one student — appears in the picker list; only they get it.
+  const rec = (await asAdmin.rpc('admin_push_recipients', { p_cohort_id: cohort })).data as { user_id: string; email: string }[];
+  expect(rec.some((r) => r.user_id === student.id && r.email === student.email)).toBe(true);
+  const one = await asAdmin.rpc('admin_push_custom', {
+    p_cohort_id: cohort, p_group_nos: null, p_title: 'E2E just you', p_body: 'E2E one student', p_url: null, p_user_id: student.id,
+  });
+  expect(one.data).toMatchObject({ queued: 1 });
+  expect((await inbox()).find((n) => n.title === 'E2E just you')?.body).toBe('E2E one student');
+  const { count: others } = await sb.from('push_outbox').select('id', { count: 'exact', head: true }).eq('title', 'E2E just you').neq('user_id', student.id);
+  expect(others).toBe(0);
+
   await s.goto('/#/');
   await s.reload();
   await expect(s.getByRole('link', { name: /Notifications, \d+ unread/ })).toBeVisible();

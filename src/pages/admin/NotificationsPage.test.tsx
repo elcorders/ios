@@ -100,5 +100,36 @@ describe('admin notifications: types, message, recent (S19)', () => {
     open();
     expect(await screen.findByText('Nothing sent yet.')).toBeInTheDocument();
   });
+
+  it('sends to one student picked by search (S20)', async () => {
+    open();
+    const form = await screen.findByRole('form', { name: 'Send a message' });
+    fireEvent.click(within(form).getByLabelText('One student'));
+    expect(within(form).getByRole('status', { name: 'Audience' })).toHaveTextContent('Pick a student.');
+    fireEvent.change(within(form).getByLabelText('Find a student'), { target: { value: '251P-003' } });
+    const list = await within(form).findByRole('list', { name: 'Matching students' });
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+    fireEvent.click(within(list).getByRole('button', { name: /Test003 Student/ }));
+    await waitFor(() => expect(within(form).getByRole('status', { name: 'Audience' })).toHaveTextContent('Test003 Student · notifications off (inbox only)'));
+    fireEvent.change(within(form).getByLabelText('Title'), { target: { value: 'Just you' } });
+    fireEvent.change(within(form).getByLabelText('Message'), { target: { value: 'See me after class' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Send message' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Send to Test003 Student?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send' }));
+    expect(await within(form).findByText('Sent to Test003 Student (inbox only — notifications are off for them).')).toBeInTheDocument();
+    await api.verifyEmailCode('student003@example.edu', '123456');
+    const mine = await api.listMyNotifications();
+    expect(mine.ok && mine.data.items[0]).toMatchObject({ title: 'Just you', kind: 'custom' });
+  });
+
+  it('asks for a student before sending', async () => {
+    open();
+    const form = await screen.findByRole('form', { name: 'Send a message' });
+    fireEvent.click(within(form).getByLabelText('One student'));
+    fireEvent.change(within(form).getByLabelText('Title'), { target: { value: 'T' } });
+    fireEvent.change(within(form).getByLabelText('Message'), { target: { value: 'B' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Send message' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent('Pick a student.');
+  });
 });
 

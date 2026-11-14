@@ -189,9 +189,13 @@ describe('auth', () => {
     await supabaseApi.adminSetPushKind('lab_closed', false);
     expect(mocks.rpc).toHaveBeenCalledWith('admin_set_push_kind', { p_kind: 'lab_closed', p_enabled: false });
     await supabaseApi.adminPushAudience('c1', [1, 2]);
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_audience', { p_cohort_id: 'c1', p_group_nos: [1, 2] });
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_audience', { p_cohort_id: 'c1', p_group_nos: [1, 2], p_user_id: null });
+    await supabaseApi.adminPushAudience('c1', null, 'u1');
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_audience', { p_cohort_id: 'c1', p_group_nos: null, p_user_id: 'u1' });
+    await supabaseApi.adminPushRecipients('c1');
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_recipients', { p_cohort_id: 'c1' });
     await supabaseApi.adminPushCustom({ cohort_id: 'c1', group_nos: null, title: 'T', body: 'B', url: '/#/lab' });
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_custom', { p_cohort_id: 'c1', p_group_nos: null, p_title: 'T', p_body: 'B', p_url: '/#/lab' });
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_push_custom', { p_cohort_id: 'c1', p_group_nos: null, p_title: 'T', p_body: 'B', p_url: '/#/lab', p_user_id: null });
     await supabaseApi.adminPushLog();
     expect(mocks.rpc).toHaveBeenCalledWith('admin_push_log', undefined);
     await supabaseApi.adminClosureImpact('2026-11-10', '2026-11-12');

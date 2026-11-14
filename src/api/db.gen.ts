@@ -1431,7 +1431,7 @@ export type Database = {
         Returns: Json
       }
       admin_push_audience: {
-        Args: { p_cohort_id: string; p_group_nos?: number[] }
+        Args: { p_cohort_id: string; p_group_nos?: number[]; p_user_id?: string }
         Returns: Json
       }
       admin_push_custom: {
@@ -1441,10 +1441,12 @@ export type Database = {
           p_group_nos: number[]
           p_title: string
           p_url?: string
+          p_user_id?: string
         }
         Returns: Json
       }
       admin_push_log: { Args: never; Returns: Json }
+      admin_push_recipients: { Args: { p_cohort_id: string }; Returns: Json }
       admin_push_stats: { Args: never; Returns: Json }
       admin_push_test: { Args: never; Returns: Json }
       admin_reject_pending: { Args: { p_pending_id: string }; Returns: Json }

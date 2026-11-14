@@ -897,9 +897,21 @@ export interface CustomPushInput {
   cohort_id: Uuid;
   /** null = every student of the cohort; else students in these groups. */
   group_nos: number[] | null;
+  /** S20: one registered student (then group_nos must be null). */
+  user_id?: Uuid | null;
   title: string;
   body: string;
   url: string | null;
+}
+
+/** S20: an active student of the cohort for the "One student" picker. */
+export interface PushRecipient {
+  user_id: Uuid;
+  name: string | null;
+  email: string;
+  index_no: string | null;
+  group_no: number | null;
+  with_push: boolean;
 }
 
 export interface PushAudience {
@@ -924,7 +936,8 @@ export interface S19Api {
   /** null = mark all read. */
   markNotificationsRead(ids: Uuid[] | null): Promise<Result<{ updated: number }>>;
   adminSetPushKind(kind: PushKind, enabled: boolean): Promise<Result<{ kind: PushKind; enabled: boolean }>>;
-  adminPushAudience(cohortId: Uuid, groupNos: number[] | null): Promise<Result<PushAudience>>;
+  adminPushAudience(cohortId: Uuid, groupNos: number[] | null, userId?: Uuid | null): Promise<Result<PushAudience>>;
+  adminPushRecipients(cohortId: Uuid): Promise<Result<PushRecipient[]>>;
   adminPushCustom(input: CustomPushInput): Promise<Result<{ queued: number; with_push: number }>>;
   adminPushLog(): Promise<Result<PushLogRow[]>>;
   /** Preview before adding a closure: future booked bookings on those dates. */

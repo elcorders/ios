@@ -86,15 +86,20 @@ code { font-family: var(--mono); font-size: 0.9em; }
 .app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .app-header {
   position: sticky; top: 0; z-index: 20;
-  background: var(--header-bg);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
   border-bottom: 1px solid var(--border);
   padding-top: env(safe-area-inset-top);
 }
+/* The blur sits on a pseudo-element: backdrop-filter on the header itself would trap the
+   phone tab bar (position: fixed) inside the header. */
+.app-header::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: var(--header-bg);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
 .app-header-inner {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-  max-width: 72rem; margin: 0 auto; padding: 0.625rem 1rem; min-height: 3.5rem;
+  max-width: 80rem; margin: 0 auto; padding: 0.625rem 1rem; min-height: 3.5rem;
 }
 .app-name {
   display: inline-flex; align-items: center; gap: 0.625rem;
@@ -107,19 +112,51 @@ code { font-family: var(--mono); font-size: 0.9em; }
   background: url('/icons/icon.svg') center / cover no-repeat;
   box-shadow: 0 4px 14px rgba(61, 139, 255, 0.25);
 }
-.main-nav { display: flex; align-items: center; gap: 0.25rem; }
-/* Narrow screens: the links scroll sideways inside the header instead of widening the page. */
-.main-nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.main-nav::-webkit-scrollbar { display: none; }
-.main-nav a, .main-nav .icon-btn { flex: none; }
 .app-name { flex: none; }
+.main-nav { display: flex; align-items: center; gap: 0.25rem; min-width: 0; margin-left: auto; }
 .main-nav a {
+  flex: none; display: inline-flex; align-items: center;
   padding: 0.4rem 0.75rem; border-radius: 999px;
   color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 550;
   transition: color 0.15s, background 0.15s;
 }
 .main-nav a:hover { color: var(--text); background: var(--surface-2); }
 .main-nav a.active { color: var(--text); background: var(--surface-3); }
+.main-nav .nav-icon { display: none; }
+.header-actions { display: flex; align-items: center; gap: 0.25rem; flex: none; }
+.header-actions .bell-link {
+  position: relative; display: inline-grid; place-items: center;
+  width: 2.5rem; height: 2.5rem; border-radius: 999px; color: var(--muted); text-decoration: none;
+}
+.header-actions .bell-link:hover, .header-actions .bell-link.active { color: var(--text); background: var(--surface-2); }
+.header-actions .bell-badge { position: absolute; top: 0.1rem; right: -0.1rem; margin: 0; }
+
+/* Phones: the main links become a bottom tab bar (thumb reach, nothing hidden off-screen). */
+:root { --tabbar-h: 3.75rem; }
+@media (max-width: 639px) {
+  .main-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    margin: 0; gap: 0; justify-content: space-around; align-items: stretch;
+    padding: 0.25rem 0.25rem env(safe-area-inset-bottom);
+    background: var(--header-bg);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border-top: 1px solid var(--border);
+  }
+  .main-nav a {
+    flex: 1 1 0; min-width: 0; min-height: calc(var(--tabbar-h) - 0.5rem);
+    flex-direction: column; justify-content: center; gap: 0.15rem;
+    padding: 0.25rem 0.125rem; border-radius: 0.75rem;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0;
+  }
+  .main-nav a:hover { background: transparent; }
+  .main-nav a.active { background: transparent; color: var(--accent); }
+  .main-nav .nav-icon { display: block; }
+  .main-nav .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app.has-tabbar { --bottom-inset: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+  .app.has-tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+  .app.has-tabbar .app-main { padding-bottom: 1.5rem; }
+}
 .icon-btn {
   display: inline-grid; place-items: center;
   width: 2.5rem; height: 2.5rem; min-height: 0; padding: 0; margin-left: 0.25rem;
@@ -132,7 +169,10 @@ code { font-family: var(--mono); font-size: 0.9em; }
   flex: 1; width: 100%; max-width: 40rem; margin: 0 auto;
   padding: 1.5rem 1rem calc(2rem + env(safe-area-inset-bottom));
 }
-.app-main.wide { max-width: 72rem; }
+/* Width by page (Layout.pageWidth): forms narrow, reading lists medium, dashboards use the screen. */
+.app-main.reading { max-width: 48rem; }
+.app-main.wide { max-width: 80rem; }
+@media (min-width: 1024px) { .app-main.wide { padding-left: 2rem; padding-right: 2rem; } }
 @media (min-width: 640px) { .app-main { padding-top: 2.5rem; padding-left: 1.5rem; padding-right: 1.5rem; } }
 .app-main > section > h1:first-child, .app-main > section > .page-head:first-child { margin-bottom: 1rem; }
 
@@ -300,6 +340,15 @@ dd { margin: 0; font-weight: 550; word-break: break-word; }
 .subnav a:hover { color: var(--text); }
 .subnav a.active { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
 @media (min-width: 640px) { .subnav { margin: 0; padding: 0; } }
+/* Phones: every admin section visible as wrapping chips (no hidden sideways scroll). */
+@media (max-width: 639px) {
+  .subnav { flex-wrap: wrap; gap: 0.375rem; overflow: visible; margin: 0; padding: 0 0 0.75rem; }
+  .subnav a {
+    padding: 0.4rem 0.75rem; border-radius: 999px; font-size: 0.85rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .subnav a.active { box-shadow: none; background: var(--accent-soft); border-color: var(--accent); }
+}
 
 .table-wrap {
   overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch;
@@ -350,11 +399,6 @@ details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
 .content-card-date { font-size: 0.8rem; }
 .quick-links { display: grid; gap: 0.75rem; grid-template-columns: 1fr 1fr; }
 .back-link { align-self: flex-start; }
-@media (max-width: 520px) {
-  .app-name-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .main-nav { gap: 0; }
-  .main-nav a { padding: 0.4rem 0.5rem; font-size: 0.82rem; }
-}
 /* Content viewer: full width (Layout sets .app-main.full on /c/:id) */
 .app-main.full { max-width: none; padding: 0 0 env(safe-area-inset-bottom); }
 .content-view-bar {
@@ -379,7 +423,6 @@ details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
 .content-view-frame { flex: 1; min-height: 0; }
 .content-frame.fill { height: 100%; }
 
-.main-nav .bell-link { position: relative; display: inline-flex; align-items: center; }
 .bell-badge {
   min-width: 1.1rem; padding: 0 0.3rem; margin-left: 0.2rem; border-radius: 999px;
   background: var(--accent, #2563eb); color: var(--on-accent, #fff); font-size: 0.7rem; line-height: 1.1rem; text-align: center;
@@ -389,3 +432,49 @@ details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
 .notif-item .notif-title { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
 .notif-dot { flex: none; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent, #2563eb); }
 .notif-unread .notif-title { font-weight: 700; }
+
+/* S20: one-student picker (Admin › Notifications). */
+.student-matches { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.375rem; }
+.student-matches button {
+  width: 100%; text-align: left; display: grid; gap: 0.1rem; min-height: 2.75rem;
+  overflow-wrap: anywhere;
+}
+.student-matches .student-name { font-weight: 600; }
+.picked-student { justify-content: space-between; flex-wrap: nowrap; }
+.picked-student > span { min-width: 0; overflow-wrap: anywhere; }
+.picked-student button { flex: none; }
+
+/* ---------- Wide screens: use the space (S20) ---------- */
+/* Content lists (Resources / Tutorials / Materials): a card grid. */
+.content-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); }
+.content-list > li { display: flex; }
+.content-list > li > .content-card { flex: 1; }
+
+/* Home: dashboard with a main column (session, lab) and a side column (group, links). */
+.home-grid { display: grid; gap: 1.25rem; align-items: start; }
+.home-main:empty { display: none; }
+@media (min-width: 960px) {
+  .home-grid { grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr); }
+  .home-grid:has(> .home-main:empty) { grid-template-columns: 1fr; }
+  .home-grid:has(> .home-main:empty) .quick-links { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+  .home-side .quick-links { grid-template-columns: 1fr; }
+  .home-side .group-card { flex-wrap: wrap; }
+  .home-side .group-card a { flex-basis: 100%; }
+  .home-side .quick-links .content-card { padding: 1rem 1.25rem; }
+}
+
+/* Lab: summary + my bookings beside the picker. On phones the cards keep their reading order. */
+.lab-page:not(.lab-page-single) { display: flex; flex-direction: column; gap: 1.25rem; }
+.lab-aside, .lab-main { display: contents; }
+.lab-summary { order: 1; }
+.lab-picker { order: 2; }
+.lab-notice { order: 3; }
+.lab-mine { order: 4; }
+@media (min-width: 960px) {
+  .lab-page:not(.lab-page-single) { display: grid; grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr); align-items: start; }
+  .lab-aside, .lab-main { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+  .lab-main { grid-column: 2; grid-row: 1; }
+  .lab-aside { grid-column: 1; grid-row: 1; }
+  .lab-summary .lab-stats { grid-template-columns: 1fr; }
+}
+.notif-send, .notif-types { max-width: 44rem; }

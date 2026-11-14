@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
-import type { PushKind, PushLogRow, PushStats } from '../../api/types';
+import type { PushKind, PushLogRow, PushRecipient, PushStats } from '../../api/types';
 import { messageFor } from '../../lib/errors';
 import { usePushState } from '../../lib/push';
 import { formatColombo } from '../../lib/time';
@@ -152,8 +152,9 @@ function Types({ stats, onError }: { stats: PushStats | null; onError: (m: strin
 
 function SendMessage({ cohortId, cohortCode, readOnly, onSent }: { cohortId: string; cohortCode: string; readOnly: boolean; onSent: () => void }) {
   const [groups, setGroups] = useState<number[]>([]);
-  const [mode, setMode] = useState<'all' | 'groups'>('all');
+  const [mode, setMode] = useState<'all' | 'groups' | 'one'>('all');
   const [picked, setPicked] = useState<number[]>([]);
+  const [student, setStudent] = useState<PushRecipient | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [link, setLink] = useState('');
@@ -173,34 +174,38 @@ function SendMessage({ cohortId, cohortCode, readOnly, onSent }: { cohortId: str
     };
   }, [cohortId]);
 
-  const groupNos = mode === 'all' ? null : [...picked].sort((a, b) => a - b);
+  const groupNos = mode === 'groups' ? [...picked].sort((a, b) => a - b) : null;
   const needGroups = mode === 'groups' && picked.length === 0;
+  const needStudent = mode === 'one' && !student;
+  const userId = mode === 'one' ? student?.user_id ?? null : null;
   const groupKey = groupNos ? groupNos.join(',') : 'all';
   useEffect(() => {
-    if (needGroups) return;
+    if (needGroups || needStudent) return;
     let live = true;
-    void api.adminPushAudience(cohortId, groupKey === 'all' ? null : groupKey.split(',').map(Number)).then((r) => {
+    void api.adminPushAudience(cohortId, groupKey === 'all' ? null : groupKey.split(',').map(Number), userId).then((r) => {
       if (live) setAudience(r.ok ? r.data : null);
     });
     return () => {
       live = false;
     };
-  }, [cohortId, groupKey, needGroups]);
+  }, [cohortId, groupKey, needGroups, needStudent, userId]);
 
-  const shown = needGroups ? null : audience;
+  const shown = needGroups || needStudent ? null : audience;
+  const who = mode === 'one' && student ? recipientName(student) : null;
 
   function ask() {
     setResult(null);
     if (!title.trim()) return setError('Add a title.');
     if (!body.trim()) return setError('Write a message.');
     if (needGroups) return setError('Pick at least one group.');
+    if (needStudent) return setError('Pick a student.');
     setError(null);
     setConfirm(true);
   }
 
   async function send() {
     setBusy(true);
-    const r = await api.adminPushCustom({ cohort_id: cohortId, group_nos: groupNos, title: title.trim(), body: body.trim(), url: link || null });
+    const r = await api.adminPushCustom({ cohort_id: cohortId, group_nos: groupNos, user_id: userId, title: title.trim(), body: body.trim(), url: link || null });
     if (!r.ok) {
       setConfirm(false);
       setBusy(false);
@@ -211,7 +216,9 @@ function SendMessage({ cohortId, cohortCode, readOnly, onSent }: { cohortId: str
     setConfirm(false);
     setBusy(false);
     setError(null);
-    const queuedText = `Sent to ${r.data.queued} ${r.data.queued === 1 ? 'student' : 'students'} (${r.data.with_push} with notifications on).`;
+    const queuedText = who
+      ? `Sent to ${who}${r.data.with_push > 0 ? '' : ' (inbox only — notifications are off for them)'}.`
+      : `Sent to ${r.data.queued} ${r.data.queued === 1 ? 'student' : 'students'} (${r.data.with_push} with notifications on).`;
     setResult(s.ok ? queuedText : `${queuedText} Delivery will retry shortly.`);
     setTitle('');
     setBody('');
@@ -228,6 +235,7 @@ function SendMessage({ cohortId, cohortCode, readOnly, onSent }: { cohortId: str
           <legend>Audience</legend>
           <label className="row"><input type="radio" name="aud" checked={mode === 'all'} onChange={() => setMode('all')} /> All students</label>
           <label className="row"><input type="radio" name="aud" checked={mode === 'groups'} onChange={() => setMode('groups')} /> Groups</label>
+          <label className="row"><input type="radio" name="aud" checked={mode === 'one'} onChange={() => setMode('one')} /> One student</label>
           {mode === 'groups' ? (
             <div className="check-row">
               {groups.map((g) => (
@@ -238,9 +246,13 @@ function SendMessage({ cohortId, cohortCode, readOnly, onSent }: { cohortId: str
               ))}
             </div>
           ) : null}
+          {mode === 'one' ? <StudentPicker cohortId={cohortId} value={student} onChange={setStudent} /> : null}
         </fieldset>
         <p role="status" aria-label="Audience">
-          {needGroups ? 'Pick at least one group.' : shown ? `${shown.students} students · ${shown.with_push} with notifications on` : '…'}
+          {needGroups ? 'Pick at least one group.'
+            : needStudent ? 'Pick a student.'
+            : who && shown ? `${who} · ${shown.with_push > 0 ? 'notifications on' : 'notifications off (inbox only)'}`
+            : shown ? `${shown.students} students · ${shown.with_push} with notifications on` : '…'}
         </p>
         <div className="field"><label htmlFor="np-title">Title</label><input id="np-title" maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <div className="field"><label htmlFor="np-body">Message</label><textarea id="np-body" rows={3} maxLength={300} value={body} onChange={(e) => setBody(e.target.value)} /></div>
@@ -255,12 +267,74 @@ function SendMessage({ cohortId, cohortCode, readOnly, onSent }: { cohortId: str
         <div className="row"><button type="submit" className="primary" disabled={readOnly || busy}>Send message</button></div>
       </form>
       {confirm ? (
-        <Dialog title={`Send to ${shown?.students ?? 0} students?`} submitLabel="Send" onCancel={() => setConfirm(false)} onSubmit={() => void send()} busy={busy}>
+        <Dialog title={who ? `Send to ${who}?` : `Send to ${shown?.students ?? 0} students?`} submitLabel="Send" onCancel={() => setConfirm(false)} onSubmit={() => void send()} busy={busy}>
           <p><strong>{title.trim()}</strong></p>
           <p>{body.trim()}</p>
         </Dialog>
       ) : null}
     </>
+  );
+}
+
+const recipientName = (r: PushRecipient) => r.name ?? r.email;
+
+/** Search the cohort's registered students and pick one (S20). */
+function StudentPicker({ cohortId, value, onChange }: { cohortId: string; value: PushRecipient | null; onChange: (r: PushRecipient | null) => void }) {
+  const [all, setAll] = useState<PushRecipient[] | null>(null);
+  const [q, setQ] = useState('');
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void api.adminPushRecipients(cohortId).then((r) => {
+      if (!live) return;
+      if (r.ok) setAll(r.data);
+      else setFailed(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [cohortId]);
+
+  if (value) {
+    return (
+      <div className="row picked-student">
+        <span>
+          <strong>{recipientName(value)}</strong>
+          <small className="muted"> {[value.index_no, value.group_no !== null ? `G${value.group_no}` : null].filter(Boolean).join(' · ')}</small>
+        </span>
+        <button type="button" onClick={() => onChange(null)} aria-label={`Change student (${recipientName(value)})`}>Change</button>
+      </div>
+    );
+  }
+  const needle = q.trim().toLowerCase();
+  const matches = (all ?? []).filter((r) =>
+    !needle || [r.name, r.email, r.index_no].some((v) => v?.toLowerCase().includes(needle)));
+  return (
+    <div className="stack student-picker">
+      <div className="field">
+        <label htmlFor="np-student">Find a student</label>
+        <input id="np-student" type="search" placeholder="Name, email or index number" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
+      </div>
+      {failed ? <p role="alert" className="error">Could not load students.</p> : null}
+      {all === null && !failed ? <p className="muted">Loading students…</p> : null}
+      {all !== null && all.length === 0 ? <p className="muted">No registered students in this cohort yet.</p> : null}
+      {all !== null && all.length > 0 ? (
+        <ul className="student-matches" aria-label="Matching students">
+          {matches.slice(0, 8).map((r) => (
+            <li key={r.user_id}>
+              <button type="button" onClick={() => onChange(r)}>
+                <span className="student-name">{recipientName(r)}</span>
+                <small className="muted">
+                  {[r.index_no, r.group_no !== null ? `G${r.group_no}` : 'No group', r.with_push ? 'notifications on' : 'inbox only'].filter(Boolean).join(' · ')}
+                </small>
+              </button>
+            </li>
+          ))}
+          {matches.length === 0 ? <li className="muted">No match.</li> : null}
+          {matches.length > 8 ? <li className="muted">{matches.length - 8} more — keep typing.</li> : null}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 

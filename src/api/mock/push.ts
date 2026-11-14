@@ -1,4 +1,4 @@
-import type { ApiError, MyNotification, PushKind, PushLogRow, PushStats, Result, S16Api, S19Api } from '../types';
+import type { ApiError, MyNotification, PushKind, PushLogRow, PushRecipient, PushStats, Result, S16Api, S19Api } from '../types';
 import { getMockCurrentEmail } from './auth';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS } from './fixtures/s1';
 import { mockActiveStudents, mockGroupOf } from './survey';
@@ -76,10 +76,13 @@ export function resetMockPush(): void {
   seedInbox();
 }
 
-function audienceUsers(cohortId: string, groupNos: number[] | null): string[] {
-  return [...mockActiveStudents(cohortId)]
+/** null = the one student asked for is not an active student of the cohort. */
+function audienceUsers(cohortId: string, groupNos: number[] | null, userId: string | null = null): string[] | null {
+  const ids = [...mockActiveStudents(cohortId)]
     .filter((e) => groupNos === null || groupNos.includes(mockGroupOf(e.id).group_no ?? -1))
     .map((e) => e.user_id);
+  if (!userId) return ids;
+  return ids.includes(userId) ? [userId] : null;
 }
 let closureImpactHook: (from: string, to: string) => { bookings: number; students: number } = () => ({ bookings: 0, students: 0 });
 /** Lab mock registers its impact calculation here (avoids an import cycle). */
@@ -175,13 +178,15 @@ export const mockPush: S16Api & S19Api = {
     enabled.set(kind, on);
     return ok({ kind, enabled: on });
   },
-  async adminPushAudience(cohortId, groupNos) {
+  async adminPushAudience(cohortId, groupNos, userId = null) {
     const u = currentUser();
     if (!u) return fail('not_authenticated');
     if (!u.profile.is_admin) return fail('forbidden');
     if (![MOCK_COHORT.id, MOCK_ARCHIVED_COHORT.id].includes(cohortId)) return fail('not_found');
     if (groupNos !== null && (!Array.isArray(groupNos) || groupNos.length === 0)) return fail('invalid_input');
-    const users = audienceUsers(cohortId, groupNos);
+    if (groupNos !== null && userId) return fail('invalid_input');
+    const users = audienceUsers(cohortId, groupNos, userId);
+    if (!users) return fail('not_found');
     return ok({ students: users.length, with_push: users.filter((id) => subs.some((s) => s.userId === id)).length });
   },
   async adminPushCustom(input) {
@@ -195,11 +200,29 @@ export const mockPush: S16Api & S19Api = {
     if (input.group_nos !== null && input.group_nos.length === 0) return fail('invalid_input');
     if (![MOCK_COHORT.id, MOCK_ARCHIVED_COHORT.id].includes(input.cohort_id)) return fail('not_found');
     if (input.cohort_id === MOCK_ARCHIVED_COHORT.id) return fail('cohort_archived');
-    const users = audienceUsers(input.cohort_id, input.group_nos);
+    if (input.group_nos !== null && input.user_id) return fail('invalid_input');
+    const users = audienceUsers(input.cohort_id, input.group_nos, input.user_id ?? null);
+    if (!users) return fail('not_found');
     let queuedNow = 0;
     for (const id of users) if (mockEnqueueNotification(id, 'custom', title, body, input.url)) queuedNow += 1;
     queued += queuedNow;
     return ok({ queued: queuedNow, with_push: users.filter((id) => subs.some((s) => s.userId === id)).length });
+  },
+  async adminPushRecipients(cohortId) {
+    const u = currentUser();
+    if (!u) return fail('not_authenticated');
+    if (!u.profile.is_admin) return fail('forbidden');
+    if (![MOCK_COHORT.id, MOCK_ARCHIVED_COHORT.id].includes(cohortId)) return fail('not_found');
+    const rows: PushRecipient[] = mockActiveStudents(cohortId).flatMap((e) => {
+      const p = MOCK_USERS.find((x) => x.profile.id === e.user_id)?.profile;
+      if (!p) return [];
+      return [{
+        user_id: p.id, name: `${p.first_name} ${p.last_name}`.trim() || null, email: p.email, index_no: p.index_no,
+        group_no: mockGroupOf(e.id).group_no, with_push: subs.some((s) => s.userId === p.id),
+      }];
+    });
+    rows.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '') || a.email.localeCompare(b.email));
+    return ok(rows);
   },
   async adminPushLog() {
     const u = currentUser();

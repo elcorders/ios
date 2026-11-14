@@ -13,9 +13,11 @@ export const pushMethods: S16Api & S19Api = {
   listMyNotifications: (before) => callRpc('list_my_notifications', { p_before: before ?? null, p_limit: 30 }),
   markNotificationsRead: (ids) => callRpc('mark_notifications_read', { p_ids: ids }),
   adminSetPushKind: (kind, enabled) => callRpc('admin_set_push_kind', { p_kind: kind, p_enabled: enabled }),
-  adminPushAudience: (cohortId, groupNos) => callRpc('admin_push_audience', { p_cohort_id: cohortId, p_group_nos: groupNos }),
+  adminPushAudience: (cohortId, groupNos, userId = null) =>
+    callRpc('admin_push_audience', { p_cohort_id: cohortId, p_group_nos: groupNos, p_user_id: userId }),
+  adminPushRecipients: (cohortId) => callRpc('admin_push_recipients', { p_cohort_id: cohortId }),
   adminPushCustom: (i) =>
-    callRpc('admin_push_custom', { p_cohort_id: i.cohort_id, p_group_nos: i.group_nos, p_title: i.title, p_body: i.body, p_url: i.url }),
+    callRpc('admin_push_custom', { p_cohort_id: i.cohort_id, p_group_nos: i.group_nos, p_title: i.title, p_body: i.body, p_url: i.url, p_user_id: i.user_id ?? null }),
   adminPushLog: () => callRpc('admin_push_log'),
   adminClosureImpact: (from, to) => callRpc('admin_closure_impact', { p_from: from, p_to: to }),
   adminPushSend: () => callFunction('push-send', {}),

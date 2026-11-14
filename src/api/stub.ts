@@ -38,7 +38,7 @@ const S1_METHODS = [
   'adminListLibrary', 'adminGetLibrary', 'adminUpsertLibrary', 'adminAddLibraryVersion', 'adminSetLinkVersions',
   'adminLinkLibrary', 'adminDeleteLibrary',
   // S19
-  'listMyNotifications', 'markNotificationsRead', 'adminSetPushKind', 'adminPushAudience', 'adminPushCustom',
+  'listMyNotifications', 'markNotificationsRead', 'adminSetPushKind', 'adminPushAudience', 'adminPushRecipients', 'adminPushCustom',
   'adminPushLog', 'adminClosureImpact',
 ] as const satisfies readonly (keyof SliceApi)[];
 
