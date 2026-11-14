@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api & S21Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -611,6 +611,8 @@ export interface Booking {
   status: BookingStatus;
   preferred_mac_no: number | null;
   created_at: IsoDateTime;
+  /** S21: another booking in this slot has the same preferred Mac (possible conflict). */
+  mac_overlap?: boolean;
 }
 
 export type LabIneligibleReason = 'has_mac' | 'no_survey' | 'suspended' | 'not_student' | 'lab_closed';
@@ -942,4 +944,102 @@ export interface S19Api {
   adminPushLog(): Promise<Result<PushLogRow[]>>;
   /** Preview before adding a closure: future booked bookings on those dates. */
   adminClosureImpact(from: IsoDate, to: IsoDate): Promise<Result<{ bookings: number; students: number }>>;
+}
+
+// ───────────────────────── S21 — Lab kiosk (CONTRACT.md §S21) ─────────────────────────
+
+export type KioskPairingStatus = 'pending' | 'approved' | 'expired';
+
+export interface KioskPairStart {
+  pairing_id: Uuid;
+  /** 8 chars Crockford base32; show as XXXX-XXXX. */
+  code: string;
+  expires_at: IsoDateTime;
+}
+
+export interface KioskDevice {
+  id: Uuid;
+  name: string;
+  /** Per-device override; null = follows the current kiosk cohort. */
+  cohort_id: Uuid | null;
+  cohort_code: string | null;
+  /** last_seen_at within 2 minutes. */
+  online: boolean;
+  last_seen_at: IsoDateTime | null;
+  last_ip: string | null;
+  ip_changed: boolean;
+  user_agent: string | null;
+  paired_by_name: string;
+  created_at: IsoDateTime;
+  revoked_at: IsoDateTime | null;
+}
+
+export interface KioskSession {
+  id: Uuid;
+  title: string;
+  date: IsoDate;
+  slots: { start_time: string; end_time: string; group_nos: number[]; now: boolean }[];
+  deliverables: string[];
+  /** available = kioskGetContent would return it (visible to the whole cohort). */
+  content: { id: Uuid; kind: ContentKind; title: string; available: boolean }[];
+}
+
+export interface KioskPerson {
+  /** Short id from the index (e.g. 251P-0NN), else first name + last initial. */
+  label: string;
+  preferred_mac_no: number | null;
+  /** Another booking this hour has the same preferred Mac. */
+  mac_clash: boolean;
+  /** Reserved for S4 check-in; null until then. */
+  mac_no: number | null;
+  checked_in: boolean | null;
+}
+
+export interface KioskLabHour {
+  start: IsoDateTime;
+  end: IsoDateTime;
+  macs: number;
+  booked: number;
+  people: KioskPerson[];
+}
+
+export interface KioskContent {
+  id: Uuid;
+  kind: ContentKind;
+  title: string;
+  summary: string | null;
+}
+
+export interface KioskFeed {
+  device: { id: Uuid; name: string };
+  cohort: { id: Uuid; code: string; batch: string } | null;
+  now: IsoDateTime;
+  /** null = closed today (no hours or a closure) → no wake lock. */
+  lab_hours_today: { open: string; close: string } | null;
+  closure_today: { kind: ClosureKind; reason: string | null } | null;
+  session_now: KioskSession | null;
+  next_session: KioskSession | null;
+  lab_today: KioskLabHour[];
+  content: { resources: KioskContent[]; tutorials: KioskContent[]; materials: KioskContent[] };
+}
+
+export interface S21Api {
+  // Kiosk device (anon → own memory-only kiosk session)
+  kioskPairStart(publicKey: JsonWebKey): Promise<Result<KioskPairStart>>;
+  kioskPairStatus(pairingId: Uuid): Promise<Result<{ status: KioskPairingStatus; device_id: Uuid | null }>>;
+  /** Challenge + verify; `sign` signs the message with the device's non-extractable private key (raw r‖s). */
+  kioskSignIn(deviceId: Uuid, sign: (message: Uint8Array) => Promise<Uint8Array>): Promise<Result<{ expires_at: IsoDateTime }>>;
+  kioskSignOut(): Promise<Result<{ ok: true }>>;
+  kioskHeartbeat(): Promise<Result<{ ok: true; server_time: IsoDateTime }>>;
+  kioskFeed(): Promise<Result<KioskFeed>>;
+  kioskGetContent(id: Uuid): Promise<Result<ContentItem>>;
+  // Staff (signed-in person)
+  kioskPairLookup(code: string): Promise<Result<{ status: 'pending'; expires_at: IsoDateTime }>>;
+  /** cohortId override: admin only. */
+  kioskPairApprove(code: string, name: string, cohortId?: Uuid | null): Promise<Result<KioskDevice>>;
+  // Admin
+  adminListKiosks(): Promise<Result<{ current_cohort_id: Uuid | null; devices: KioskDevice[] }>>;
+  adminUpdateKiosk(id: Uuid, name: string, cohortId: Uuid | null): Promise<Result<KioskDevice>>;
+  adminRevokeKiosk(id: Uuid): Promise<Result<KioskDevice>>;
+  adminSetKioskCohort(cohortId: Uuid | null): Promise<Result<{ current_cohort_id: Uuid | null }>>;
 }

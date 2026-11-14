@@ -18,6 +18,8 @@ import { Lab } from './pages/Lab';
 import { Notifications } from './pages/Notifications';
 import { Install } from './pages/Install';
 import { NotFound } from './pages/NotFound';
+import { Kiosk } from './pages/kiosk/Kiosk';
+import { KioskPair } from './pages/kiosk/KioskPair';
 
 export const routes: RouteObject[] = [
   {
@@ -37,6 +39,7 @@ export const routes: RouteObject[] = [
       { path: 'transfer', element: <RequireAuth><Transfer /></RequireAuth> },
       { path: 'lab', element: <RequireAuth><Lab /></RequireAuth> },
       { path: 'notifications', element: <RequireAuth><Notifications /></RequireAuth> },
+      { path: 'kiosk/pair', element: <RequireAuth><KioskPair /></RequireAuth> },
       { path: 'c/:id', element: <RequireAuth><ContentView /></RequireAuth> },
       { path: 'admin/*', element: <RequireAuth><AdminLayout /></RequireAuth> },
       { path: 'login', element: <Login /> },
@@ -46,6 +49,9 @@ export const routes: RouteObject[] = [
       { path: '*', element: <NotFound /> },
     ],
   },
+  // S21: kiosk is full screen, outside the app Layout and the person's session.
+  { path: '/kiosk', element: <Kiosk /> },
+  { path: '/kiosk/c/:id', element: <Kiosk /> },
 ];
 
 export const createRouter = () => createHashRouter(routes);
