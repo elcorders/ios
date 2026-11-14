@@ -29,6 +29,10 @@ function errorText(error: ApiError): string {
   return typeof at === 'string' ? `${base} (${fmtDayTime(at)})` : base;
 }
 
+/** S21.F3 (D62): same text for the booking warning and the My bookings flag. */
+export const MAC_CONFLICT_TEXT =
+  'Possible Mac conflict — another student with the same preferred Mac booked this hour. Contact an instructor to move to a different Mac.';
+
 const STATUS_LABEL: Record<Booking['status'], string> = {
   booked: 'Booked',
   withdrawn: 'Withdrawn',
@@ -244,6 +248,11 @@ export function Lab() {
                       {b.preferred_mac_no ? <span className="muted"> · Mac {b.preferred_mac_no}</span> : null}
                     </span>
                     <span className="badge">{STATUS_LABEL[b.status]}</span>
+                    {b.mac_overlap ? (
+                      <span className="lab-overlap" role="img" title={MAC_CONFLICT_TEXT} aria-label={MAC_CONFLICT_TEXT}>
+                        ⚠ <span aria-hidden="true">Possible Mac conflict</span>
+                      </span>
+                    ) : null}
                     {b.status === 'booked' && future ? (
                       <button type="button" aria-label={`Withdraw booking ${fmtDayTime(b.slot_start)}`} onClick={() => { setDialogError(null); setWithdrawing(b); }}>
                         Withdraw
@@ -336,7 +345,7 @@ export function Lab() {
             {notice.warnings.map((w) => (
               <div key={w.slot_start} className="lab-warning stack">
                 <p>
-                  Someone else who prefers the same Mac is booked at {fmtDayTime(w.slot_start)}. You can keep it, or move to a different time.
+                  {fmtDayTime(w.slot_start)}: {MAC_CONFLICT_TEXT}
                 </p>
                 {w.suggestions.length > 0 ? (
                   <div className="row">

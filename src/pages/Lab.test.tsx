@@ -205,7 +205,9 @@ describe('lab page: eligible student', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /11:00 to 12:00/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Book 1 slot' }));
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Confirm booking' }));
-    expect(await screen.findByText(/prefers the same Mac/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Tue 10 Nov 11:00: Possible Mac conflict — another student with the same preferred Mac booked this hour\. Contact an instructor to move to a different Mac\./),
+    ).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /Also book Tue 10 Nov 09:00/ }));
     const list = await screen.findByRole('list', { name: 'My bookings' });
     expect(await within(list).findByText(/Tue 10 Nov 09:00/)).toBeInTheDocument();
@@ -220,5 +222,18 @@ describe('lab page: admin without a student enrolment', () => {
     expect(await screen.findByRole('group', { name: 'Day' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Book/ })).toBeNull();
+  });
+});
+
+describe('lab page: preferred Mac clash flag', () => {
+  it('shows a warning with the full text on a booking with mac_overlap', async () => {
+    await signIn(5);
+    const lab = await api.getMyLab(C);
+    if (!lab.ok) throw new Error();
+    await api.setPreferredMac(C, lab.data.macs.find((m) => m.no === 3)!.id);
+    await api.bookSlots(C, [slot('2026-11-10', 11)]);
+    open();
+    const list = await screen.findByRole('list', { name: 'My bookings' });
+    expect(within(list).getByRole('img', { name: /^Possible Mac conflict — another student with the same preferred Mac booked this hour\./ })).toBeInTheDocument();
   });
 });

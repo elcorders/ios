@@ -221,6 +221,24 @@ export function mockContentAvailable(id: string): boolean {
   const i = items.find((x) => x.id === id);
   return !!i && visible(i);
 }
+/** S21 kiosk: items visible to the whole cohort (no person, no per-group early release), by position. */
+export function mockKioskItems(cohortId: string): { id: string; kind: ContentKind; title: string; summary: string | null }[] {
+  return items
+    .filter((i) => (i.kind === 'resource' ? i.cohort_id === null : i.cohort_id === cohortId) && statusOf(i) === 'published')
+    .sort(order)
+    .map((i) => ({ id: i.id, kind: i.kind, title: i.title, summary: i.summary }));
+}
+
+/** S21 kiosk: `kiosk_get_content` for the mock cohort. */
+export function mockKioskGetContent(id: string, cohortId: string): ContentItem | null {
+  const i = items.find((x) => x.id === id);
+  if (!i || !mockKioskItems(cohortId).some((x) => x.id === id)) return null;
+  return {
+    id: i.id, kind: i.kind, cohort_code: cohortOf(i.cohort_id)?.code ?? null, title: i.title,
+    summary: i.summary, published_at: iso(visibleFrom(i) ?? Date.now()), body_html: bodyOf(i),
+  };
+}
+
 /** S19: set notify_on_release for a linked item. */
 export function mockSetNotify(id: string, notify: boolean): void {
   const i = items.find((x) => x.id === id);

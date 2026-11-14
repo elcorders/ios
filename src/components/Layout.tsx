@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useRef, type MouseEvent } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { pushEnabledFor } from '../lib/features';
 import { useUnreadCount } from '../lib/unread';
@@ -6,6 +7,10 @@ import { BellIcon } from './BellIcon';
 import { ThemeToggle } from './ThemeToggle';
 import { AccountMenu } from './AccountMenu';
 import { Icon, type IconName } from './icons';
+
+/** S21: this many presses of the header logo within the window open the kiosk. */
+export const KIOSK_TAPS = 6;
+export const KIOSK_TAP_WINDOW_MS = 3000;
 
 const WIDE = ['/', '/resources', '/tutorials', '/materials', '/lab', '/admin'];
 
@@ -23,6 +28,18 @@ export function pageWidth(pathname: string): 'wide' | 'reading' | 'narrow' {
 export function Layout() {
   const { me } = useAuth();
   const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+  const taps = useRef<number[]>([]);
+  // The first presses go Home as usual; only the one that completes the gesture is turned into /kiosk.
+  const onLogo = (e: MouseEvent) => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((t) => now - t <= KIOSK_TAP_WINDOW_MS), now];
+    if (taps.current.length >= KIOSK_TAPS) {
+      taps.current = [];
+      e.preventDefault();
+      navigate('/kiosk');
+    }
+  };
   const bell = !!me && pushEnabledFor(me.is_admin);
   const unread = useUnreadCount(bell, pathname + search);
   const full = pathname.startsWith('/c/'); // content viewer: edge to edge
@@ -37,7 +54,7 @@ export function Layout() {
     <div className={['app', full ? 'app-full' : '', me ? 'has-tabbar' : ''].filter(Boolean).join(' ')}>
       <header className="app-header">
         <div className="app-header-inner">
-          <Link to="/" className="app-name">
+          <Link to="/" className="app-name" onClick={onLogo}>
             <span className="logo" aria-hidden="true"></span>
             <span className="app-name-text">NIBM iOS</span>
           </Link>

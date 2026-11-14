@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { api } from '../api';
 import { resetMockAuth } from '../api/mock/auth';
@@ -67,6 +67,39 @@ describe('Account menu', () => {
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
     fireEvent.click(btn);
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+  });
+});
+
+describe('Logo 6-tap opens the kiosk', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  const logo = () => screen.getByRole('link', { name: /NIBM iOS/ });
+
+  it('six presses within 3 s go to /kiosk', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    renderAt('/login');
+    for (let i = 0; i < 5; i++) {
+      vi.setSystemTime(Date.now() + 400);
+      fireEvent.click(logo());
+    }
+    // The first five are normal clicks (Home → signed-out → sign in).
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    vi.setSystemTime(Date.now() + 400);
+    fireEvent.click(logo());
+    expect(await screen.findByRole('heading', { name: 'Lab kiosk' })).toBeInTheDocument();
+    expect(screen.queryByRole('banner')).toBeNull();
+  });
+
+  it('slow presses do not count and a single click still goes Home', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    renderAt('/nope');
+    for (let i = 0; i < 6; i++) {
+      vi.setSystemTime(Date.now() + 1500);
+      fireEvent.click(logo());
+    }
+    expect(screen.queryByRole('heading', { name: 'Lab kiosk' })).toBeNull();
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
 });

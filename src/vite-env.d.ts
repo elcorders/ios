@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_SW_DEV?: string;
   /** Push UI: `on` (everyone), `admin` (admins only), else off. See src/lib/features.ts. */
   readonly VITE_FEATURE_PUSH?: string;
+  /** Origin used in the kiosk pairing QR (S21); default = this page origin. Lets a PC on localhost pair via its LAN address. */
+  readonly VITE_KIOSK_PAIR_ORIGIN?: string;
 }
 
 /** ISO build timestamp injected by vite `define`. */

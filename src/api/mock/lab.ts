@@ -121,8 +121,14 @@ function toBooking(b: MockBooking): Booking {
     status: b.status,
     preferred_mac_no: macNo(b.preferred_mac_id),
     created_at: b.created_at,
+    mac_overlap: clashes(b),
   };
 }
+
+/** S21: another non-withdrawn booking in the same hour snapshotted the same preferred Mac. */
+const clashes = (b: MockBooking) =>
+  counted(b) && b.preferred_mac_id !== null &&
+  bookings.some((o) => o !== b && counted(o) && o.slot_ms === b.slot_ms && o.preferred_mac_id === b.preferred_mac_id);
 
 function seed(): void {
   seq = 0;
@@ -165,7 +171,8 @@ function seed(): void {
   for (let i = 1; i <= 3; i++) put(fillerEnrol(i), d2, 9);
   // student001 has a Mac now but kept an earlier booking (withdraw still allowed).
   const s1 = MOCK_USERS.find((u) => u.profile.email === studentEmail(1))!;
-  put(userEnrol(s1), d2, 16);
+  put(userEnrol(s1), d2, 16, 5);
+  put(fillerEnrol(2), d2, 16, 5); // same preferred Mac as student001 in that hour (S21 clash)
 }
 seed();
 
@@ -660,4 +667,36 @@ export const mockLab: S3Api & S13Api = {
 export function mockSetBookingStatus(bookingId: string, status: BookingStatus): void {
   const b = bookings.find((x) => x.id === bookingId);
   if (b) b.status = status;
+}
+
+/** S21 kiosk mock: today's lab hours, Macs in service and the (fictional) bookings of a date. */
+export function mockLabDay(d: IsoDate = today()): {
+  hours: { open: string; close: string } | null;
+  closure: { kind: ClosureKind; reason: string | null } | null;
+  macs: number;
+  rows: { slot_ms: number; index_no: string | null; first_name: string; last_name: string; pref: number | null }[];
+} {
+  const h = hoursFor(weekdayOf(d));
+  const c = closureOn(d);
+  const open = !!h && !closesLab(d);
+  const rows = bookings
+    .filter((b) => counted(b) && dateOf(b.slot_ms) === d)
+    .map((b) => {
+      const p = b.enrolment_id.startsWith('filler-')
+        ? fillerProfile(b.enrolment_id)
+        : MOCK_USERS.find((u) => userEnrol(u) === b.enrolment_id)?.profile;
+      return {
+        slot_ms: b.slot_ms,
+        index_no: p?.index_no ?? null,
+        first_name: p?.first_name ?? '',
+        last_name: p?.last_name ?? '',
+        pref: macNo(b.preferred_mac_id),
+      };
+    });
+  return {
+    hours: open ? { open: h.open_time, close: h.close_time } : null,
+    closure: c ? { kind: c.kind, reason: c.reason } : null,
+    macs: capacity(),
+    rows,
+  };
 }
