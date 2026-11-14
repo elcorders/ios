@@ -24,14 +24,14 @@ describe('survey gate', () => {
   it('does not gate answered students or instructors', async () => {
     await signIn('student001@example.edu');
     open('/');
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
-    expect(screen.getByText(/Your group:/)).toHaveTextContent('Group');
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Your group' })).toHaveTextContent('Group');
   });
 
   it('does not gate instructors', async () => {
     await signIn('instructor001@example.edu');
     open('/');
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 
   it('confirm step, then group, then Continue goes home with the group shown', async () => {
@@ -42,8 +42,8 @@ describe('survey gate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     expect(await screen.findByText(/You're in/)).toHaveTextContent(/Group \d/);
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
-    expect(screen.getByText(/Your group:/)).toHaveTextContent(/Group \d/);
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Your group' })).toHaveTextContent(/Group \d/);
   });
 
   it('Go back returns to the question', async () => {
@@ -67,7 +67,7 @@ describe('survey gate', () => {
   it('answered student on /survey is sent home', async () => {
     await signIn('student001@example.edu');
     open('/survey');
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 });
 

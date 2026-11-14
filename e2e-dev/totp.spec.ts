@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createUser } from './helpers/admin';
-import { enrolTotpOnSetup, freshTotp, securityOf, signInWithEmailCode, signOut } from './helpers/flows';
+import { enrolTotpOnSetup, freshTotp, securityOf, signInWithEmailCode, signOut, expectSignedInAs } from './helpers/flows';
 
 test('authenticator app: enrol on setup, then sign in with email + TOTP', async ({ page }) => {
   const user = await createUser(2);
@@ -16,5 +16,5 @@ test('authenticator app: enrol on setup, then sign in with email + TOTP', async 
   await page.getByLabel('Authenticator code').fill(await freshTotp(secret, step));
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-  await expect(page.getByText(user.email)).toBeVisible();
+  await expectSignedInAs(page, user.email);
 });

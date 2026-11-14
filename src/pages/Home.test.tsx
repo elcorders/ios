@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { routes } from '../routes';
 import { api } from '../api';
@@ -135,5 +135,25 @@ describe('Home dashboard cards', () => {
     open();
     await screen.findByRole('heading', { name: 'Home' });
     expect(screen.queryByRole('region', { name: /Next session/ })).toBeNull();
+  });
+});
+
+describe('Home layout', () => {
+  it('greets compactly, has tiles, and no sign out button', async () => {
+    await api.verifyEmailCode('student005@example.edu', '123456');
+    open();
+    await screen.findByRole('heading', { name: 'Home' });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByText(/^Hi, /)).toBeInTheDocument();
+    expect(screen.queryByText(/Signed in as/)).toBeNull();
+    const tiles = within(screen.getByRole('navigation', { name: 'Quick links' }));
+    for (const n of [/Resources/, /Tutorials/, /Class materials/, /Lab booking/]) expect(tiles.getByRole('link', { name: n })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+  });
+
+  it('shows an Admin tile for admins only', async () => {
+    await api.verifyEmailCode('admin@example.edu', '123456');
+    open();
+    expect(await screen.findByRole('link', { name: /Manage classes and students/ })).toHaveAttribute('href', '/admin');
   });
 });

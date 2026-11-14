@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { Icon, type IconName } from '../components/icons';
 import { WhatsAppCard } from '../components/WhatsAppCard';
 import { fireConfetti } from '../components/Confetti';
 import { useAuth } from '../auth/AuthProvider';
@@ -211,79 +212,59 @@ function LabCard({ enrolment }: { enrolment: MyEnrolment }) {
   );
 }
 
+type Tile = { to: string; icon: IconName; title: string; text: string; tone: string };
+
 export function Home() {
-  const { me, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { me } = useAuth();
   if (!me) return null;
-  const name = `${me.profile.first_name} ${me.profile.last_name}`.trim();
   const students = me.enrolments.filter((e) => e.role === 'student' && e.status === 'active' && e.cohort_status === 'active');
+  const labTile = me.is_admin || me.enrolments.some((e) => e.role === 'student' && e.status === 'active' && e.lab_open);
+  const tiles: Tile[] = [
+    { to: '/resources', icon: 'resources', title: 'Resources', text: 'Guides and references', tone: 'blue' },
+    { to: '/tutorials', icon: 'tutorials', title: 'Tutorials', text: 'Step-by-step tutorials', tone: 'violet' },
+    { to: '/materials', icon: 'materials', title: 'Class materials', text: 'Materials for your classes', tone: 'teal' },
+  ];
+  if (labTile) tiles.push({ to: '/lab', icon: 'lab', title: 'Lab booking', text: 'Book a lab Mac', tone: 'amber' });
+  if (pushEnabledFor(me.is_admin)) tiles.push({ to: '/notifications', icon: 'bell', title: 'Notifications', text: 'Class and lab updates', tone: 'rose' });
+  if (me.is_admin) tiles.push({ to: '/admin', icon: 'admin', title: 'Admin', text: 'Manage classes and students', tone: 'slate' });
+  const groups = me.enrolments.filter((e) => e.role === 'student' && e.status === 'active' && e.group_name);
+  const today = formatColombo(new Date().toISOString(), { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <section className="stack-lg home">
       <AppTile pushOn={pushEnabledFor(me.is_admin)} />
-      <div className="card hero home-hero">
-        <p className="eyebrow">Welcome back{me.profile.first_name ? `, ${me.profile.first_name}` : ''}</p>
-        <h1>Home</h1>
-        <p className="muted">
-          Signed in as <strong>{name}</strong> ({me.profile.email})
-        </p>
+      <div className="home-greeting">
+        <h1 className="sr-only">Home</h1>
+        <p className="greeting-hi" aria-hidden="true">Hi{me.profile.first_name ? `, ${me.profile.first_name}` : ''}</p>
+        <p className="greeting-date muted">{today}</p>
       </div>
+      <nav className={`tile-grid tiles-${tiles.length}`} aria-label="Quick links">
+        {tiles.map((t) => (
+          <Link key={t.to} to={t.to} className={`tile tone-${t.tone}`}>
+            <span className="tile-icon" aria-hidden="true"><Icon name={t.icon} size={24} className="" /></span>
+            <span className="tile-body">
+              <span className="tile-title">{t.title}</span>
+              <span className="tile-text muted">{t.text}</span>
+            </span>
+          </Link>
+        ))}
+      </nav>
       <div className="home-grid">
         <div className="home-main stack-lg">
           {students.filter((e) => e.group_name).map((e) => <NextSession key={`s-${e.enrolment_id}`} enrolment={e} />)}
           {students.filter((e) => e.lab_open).map((e) => <LabCard key={`l-${e.enrolment_id}`} enrolment={e} />)}
         </div>
         <div className="home-side stack-lg">
-          {me.enrolments
-            .filter((e) => e.role === 'student' && e.status === 'active' && e.group_name)
-            .map((e) => (
-              <div key={e.enrolment_id} className="card group-card">
-                <span className="group-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </span>
-                <p>
-                  Your group: <strong>{e.group_name}</strong>
-                </p>
-                <Link to="/transfer">Request a group change</Link>
-              </div>
-            ))}
-          <div className="quick-links">
-            <Link to="/resources" className="card content-card">
-              <span className="content-card-title">Resources</span>
-              <span className="muted">Guides and references</span>
-            </Link>
-            <Link to="/tutorials" className="card content-card">
-              <span className="content-card-title">Tutorials</span>
-              <span className="muted">Step-by-step tutorials</span>
-            </Link>
-            <Link to="/materials" className="card content-card">
-              <span className="content-card-title">Class materials</span>
-              <span className="muted">Materials for your classes</span>
-            </Link>
-            {me.is_admin || me.enrolments.some((e) => e.role === 'student' && e.status === 'active' && e.lab_open) ? (
-              <Link to="/lab" className="card content-card">
-                <span className="content-card-title">Lab booking</span>
-                <span className="muted">Book a lab Mac</span>
-              </Link>
-            ) : null}
-            <Link to="/install" className="card content-card">
-              <span className="content-card-title">Install the app</span>
-              <span className="muted">Add it to your home screen</span>
-            </Link>
-        </div>
+          {groups.map((e) => (
+            <div key={e.enrolment_id} className="card group-card" role="group" aria-label="Your group">
+              <span className="group-icon" aria-hidden="true"><Icon name="group" size={22} className="" /></span>
+              <p>
+                <span className="muted">Your group</span>
+                <strong>{e.group_name}</strong>
+              </p>
+              <Link to="/transfer" className="group-change">Request change</Link>
+            </div>
+          ))}
           <WhatsAppCard enrolments={me.enrolments} />
-          <button
-            type="button"
-            className="inline"
-            onClick={async () => {
-              await signOut();
-              navigate('/login', { replace: true });
-            }}
-          >
-            Sign out
-          </button>
         </div>
       </div>
     </section>

@@ -76,8 +76,8 @@ describe('transfer page', () => {
   it('home links to the transfer page', async () => {
     await signIn(1);
     open('/');
-    const link = await screen.findByRole('link', { name: 'Request a group change' });
+    const link = await screen.findByRole('link', { name: 'Request change' });
     expect(link).toHaveAttribute('href', '/transfer');
-    await waitFor(() => expect(screen.getByText(/Your group:/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Your group' })).toBeInTheDocument());
   });
 });

@@ -16,7 +16,7 @@ test('existing student without an answer: setup -> survey gate -> auto group -> 
 
   const group = await answerSurvey(page, true);
   expect(group).toMatch(/^Group \d+$/);
-  await expect(page.getByText(/Your group:/)).toContainText(group);
+  await expect(page.getByRole('group', { name: 'Your group' })).toContainText(group);
 
   // Server state: one response, enrolment has the group shown.
   const sb = serviceClient();
@@ -39,5 +39,5 @@ test('existing student without an answer: setup -> survey gate -> auto group -> 
   await page.getByRole('tab', { name: 'Passkey' }).click();
   await page.getByRole('button', { name: 'Sign in with passkey' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-  await expect(page.getByText(/Your group:/)).toContainText(group);
+  await expect(page.getByRole('group', { name: 'Your group' })).toContainText(group);
 });

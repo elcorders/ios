@@ -28,7 +28,7 @@ describe('security setup gate', () => {
   it('does not redirect a complete user, and /setup is reachable without looping', async () => {
     await signIn('student001@example.edu');
     open('/');
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 
   it('requires sign-in for /setup', async () => {
@@ -41,7 +41,9 @@ describe('security setup gate', () => {
     await signIn('student002@example.edu');
     open('/setup');
     fireEvent.click(await screen.findByRole('button', { name: 'Add a passkey' }));
-    expect(await screen.findByText(/Signed in as/)).toHaveTextContent('student002@example.edu');
+    await screen.findByRole('heading', { name: 'Home' });
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.getByText('student002@example.edu')).toBeInTheDocument();
   });
 
   it('unsupported browser uses TOTP, then home', async () => {
@@ -55,6 +57,6 @@ describe('security setup gate', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/not correct/);
     fireEvent.change(input, { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify and finish' }));
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 });

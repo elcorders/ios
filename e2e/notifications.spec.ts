@@ -7,7 +7,7 @@ async function signIn(page: Page, email: string) {
   await page.getByRole('button', { name: 'Send code' }).click();
   await page.getByLabel('6-digit code').fill('123456');
   await page.getByRole('button', { name: 'Verify code' }).click();
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
 }
 
 test('student inbox: bell badge, list, mark all read', async ({ page }) => {

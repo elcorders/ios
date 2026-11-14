@@ -13,5 +13,5 @@ test('student without a survey answer is gated, answers, and sees the group on h
   await expect(page.getByText(/You're in/)).toContainText('Group');
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-  await expect(page.getByText(/Your group:/)).toContainText('Group');
+  await expect(page.getByRole('group', { name: 'Your group' })).toContainText('Group');
 });

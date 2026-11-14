@@ -34,7 +34,7 @@ test('student requests, admin moves an ungrouped student, approves the swap, rej
   await signInWithEmailCode(s, s1.email);
   await addPasskeyOnSetup(s);
   // addPasskeyOnSetup answers the survey gate (No Mac) -> Home shows the group.
-  const g1 = Number((await s.getByText('Your group:').locator('strong').innerText()).replace(/\D/g, ''));
+  const g1 = Number((await s.getByRole('group', { name: 'Your group' }).locator('strong').innerText()).replace(/\D/g, ''));
 
   // Admin moves the ungrouped student 2 into another group (manual move).
   const target = g1 === 1 ? 2 : 1;

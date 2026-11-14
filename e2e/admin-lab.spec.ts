@@ -7,7 +7,7 @@ test('admin Lab: paste a closure, take a Mac out of service, adjust credits', as
   await page.getByRole('button', { name: 'Send code' }).click();
   await page.getByLabel('6-digit code').fill('123456');
   await page.getByRole('button', { name: 'Verify code' }).click();
-  await expect(page.getByText('admin@example.edu')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
 
   await page.goto('/#/admin/lab/macs');
   await expect(page.getByRole('table', { name: 'Lab Macs' })).toBeVisible();

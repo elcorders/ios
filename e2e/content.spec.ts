@@ -7,7 +7,7 @@ test('student opens a published tutorial', async ({ page }) => {
   await page.getByRole('button', { name: 'Send code' }).click();
   await page.getByLabel('6-digit code').fill('123456');
   await page.getByRole('button', { name: 'Verify code' }).click();
-  await expect(page.getByText('student001@example.edu')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tutorials' }).click();
   await expect(page.getByRole('heading', { name: 'Tutorials' })).toBeVisible();

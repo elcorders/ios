@@ -61,7 +61,15 @@ export async function passSurveyGateIfAsked(page: Page): Promise<void> {
   if (await survey.isVisible()) await answerSurvey(page, false);
 }
 
+/** The signed-in email now lives in the header Account menu (not on Home). */
+export async function expectSignedInAs(page: Page, email: string): Promise<void> {
+  await page.getByRole('button', { name: 'Account' }).click();
+  await expect(page.getByText(email)).toBeVisible();
+  await page.keyboard.press('Escape');
+}
+
 export async function signOut(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Account' }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 }

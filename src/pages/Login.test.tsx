@@ -14,7 +14,9 @@ describe('Login', () => {
   it('passkey sign-in lands on home, then sign out returns to login', async () => {
     open('/login');
     fireEvent.click(await screen.findByRole('button', { name: 'Sign in with passkey' }));
-    expect(await screen.findByText(/Signed in as/)).toHaveTextContent('student001@example.edu');
+    await screen.findByRole('heading', { name: 'Home' });
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.getByText('student001@example.edu')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
@@ -48,6 +50,8 @@ describe('Login', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'student003@example.edu' } });
     fireEvent.change(screen.getByLabelText('Authenticator code'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByText(/Signed in as/)).toHaveTextContent('student003@example.edu');
+    await screen.findByRole('heading', { name: 'Home' });
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(screen.getByText('student003@example.edu')).toBeInTheDocument();
   });
 });

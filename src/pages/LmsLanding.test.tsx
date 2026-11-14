@@ -58,7 +58,7 @@ describe('LmsLanding', () => {
     await api.verifyEmailCode('student001@example.edu', '123456');
     const spy = vi.spyOn(api, 'lmsLanding');
     open(`?${GOOD}&email=student001@example.edu&idnumber=COBSCCOMP251P-001`);
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(window.location.href).not.toContain('student001');
     expect(spy).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Send code' })).not.toBeInTheDocument();
@@ -71,7 +71,7 @@ describe('LmsLanding', () => {
     const passkey = await screen.findByRole('button', { name: 'Sign in with passkey' });
     expect(screen.getByRole('link', { name: /authenticator app/ })).toBeInTheDocument();
     fireEvent.click(passkey);
-    expect(await screen.findByText(/Signed in as/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(send).not.toHaveBeenCalled();
     send.mockRestore();
   });

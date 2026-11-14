@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { cohortId, createUser, emailOf, indexOf, serviceClient, userClient } from './helpers/admin';
-import { accessTokenOf, addPasskeyOnSetup, addVirtualAuthenticator, blockOtpMail, signInWithEmailCode, signOut } from './helpers/flows';
+import { accessTokenOf, addPasskeyOnSetup, addVirtualAuthenticator, blockOtpMail, signInWithEmailCode, signOut, expectSignedInAs } from './helpers/flows';
 
 test('import with a known index + new email changes the email; passkey, group stay; old email still matches LMS; admin edit switches back', async ({ browser }) => {
   test.setTimeout(120_000);
@@ -9,7 +9,7 @@ test('import with a known index + new email changes the email; passkey, group st
   const admin = await createUser(90, { admin: true, enrol: false });
   const student = await createUser(91);
   const oldEmail = student.email;
-  const newEmail = emailOf(191);
+  const newEmail = emailOf(199); // not 191: notifications.spec creates that user
   const name = 'E2E User91';
 
   // Student signs in once: passkey + survey -> group.
@@ -59,7 +59,7 @@ test('import with a known index + new email changes the email; passkey, group st
   await s.goto('/#/login');
   await s.getByRole('button', { name: 'Sign in with passkey' }).click();
   await expect(s.getByRole('heading', { name: 'Home' })).toBeVisible();
-  await expect(s.getByText(newEmail)).toBeVisible();
+  await expectSignedInAs(s, newEmail);
 
   // Admin edits the email back through Members; the dialog shows the previous email.
   await page.goto('/#/admin/members');

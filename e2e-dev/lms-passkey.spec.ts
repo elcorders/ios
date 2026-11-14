@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createUser, emailCode, indexOf } from './helpers/admin';
-import { addPasskeyOnSetup, addVirtualAuthenticator, blockOtpMail, securityOf, signOut } from './helpers/flows';
+import { addPasskeyOnSetup, addVirtualAuthenticator, blockOtpMail, securityOf, signOut, expectSignedInAs } from './helpers/flows';
 
 test('LMS link -> email code -> passkey setup -> sign out -> passkey sign-in', async ({ page, context }) => {
   const user = await createUser(1);
@@ -33,7 +33,7 @@ test('LMS link -> email code -> passkey setup -> sign out -> passkey sign-in', a
   await page.getByRole('tab', { name: 'Passkey' }).click();
   await page.getByRole('button', { name: 'Sign in with passkey' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-  await expect(page.getByText(user.email)).toBeVisible();
+  await expectSignedInAs(page, user.email);
 
   // LMS link again while signed in: straight Home, no email code step.
   await page.goto(`/#/lms?${q.toString()}`);
@@ -46,5 +46,5 @@ test('LMS link -> email code -> passkey setup -> sign out -> passkey sign-in', a
   await expect(page.getByRole('heading', { name: /Welcome to class 25\.2/ })).toBeVisible();
   await page.getByRole('button', { name: 'Sign in with passkey' }).click();
   await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
-  await expect(page.getByText(user.email)).toBeVisible();
+  await expectSignedInAs(page, user.email);
 });
