@@ -16,6 +16,7 @@ import { ContentPage } from './ContentPage';
 import { ClassesPage } from './ClassesPage';
 import { NotificationsPage } from './NotificationsPage';
 import { pushEnabledFor } from '../../lib/features';
+import { KiosksPage } from './KiosksPage';
 import { TransfersPage } from './TransfersPage';
 import { onOpenCount } from './transfers/openCount';
 
@@ -130,6 +131,7 @@ function AdminArea() {
             Transfers{openTransfers?.cohortId === cohort.id ? ` (${openTransfers.count})` : ''}
           </NavLink>
           <NavLink to="/admin/lab">Lab</NavLink>
+          <NavLink to="/admin/kiosks">Kiosks</NavLink>
           <NavLink to="/admin/content">Content</NavLink>
           <NavLink to="/admin/classes">Classes</NavLink>
           {pushEnabledFor(true) ? <NavLink to="/admin/notifications">Notifications</NavLink> : null}
@@ -145,6 +147,7 @@ function AdminArea() {
           <Route path="groups" element={<GroupsPage />} />
           <Route path="transfers" element={<TransfersPage />} />
           <Route path="lab/*" element={<LabAdminPage />} />
+          <Route path="kiosks" element={<KiosksPage />} />
           <Route path="content" element={<ContentPage />} />
           <Route path="classes" element={<ClassesPage />} />
           <Route path="notifications" element={pushEnabledFor(true) ? <NotificationsPage /> : <Navigate to="members" replace />} />
