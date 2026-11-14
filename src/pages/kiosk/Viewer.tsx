@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import type { ContentItem, KioskFeed } from '../../api/types';
 import { ContentFrame } from '../../components/ContentFrame';
-import { useKioskTo } from './Board';
+import type { BridgeUp } from '../../lib/kioskRemote';
+import { useKioskTo, zoomStyle } from './Board';
 
 type State = { step: 'loading' } | { step: 'missing' } | { step: 'error' } | { step: 'ready'; item: ContentItem };
 
 /** Full-screen content with a big Back button (sandboxed like the student viewer). */
-export function Viewer({ id, feed, online }: { id: string; feed: KioskFeed | null; online: boolean }) {
+interface Props {
+  id: string;
+  feed: KioskFeed | null;
+  online: boolean;
+  /** S23 remote: zoom level, and the bridge to the content frame. */
+  zoom?: number;
+  frameRef?: RefObject<HTMLIFrameElement | null>;
+  onBridge?: (m: BridgeUp) => void;
+}
+
+export function Viewer({ id, feed, online, zoom = 1, frameRef, onBridge }: Props) {
   const to = useKioskTo();
   const [state, setState] = useState<State>({ step: 'loading' });
   useEffect(() => {
@@ -37,7 +48,11 @@ export function Viewer({ id, feed, online }: { id: string; feed: KioskFeed | nul
       {state.step === 'missing' ? <p className="kiosk-big kiosk-empty">This item is not available yet.</p> : null}
       {state.step === 'error' ? <p role="alert" className="kiosk-big kiosk-empty">Could not load this page. Try again in a moment.</p> : null}
       {state.step === 'ready' ? (
-        <div className="viewer-frame"><ContentFrame html={state.item.body_html} title={state.item.title} fill /></div>
+        <div className="viewer-frame">
+          <div className="remote-zoom" style={zoomStyle(zoom)}>
+            <ContentFrame html={state.item.body_html} title={state.item.title} fill frameRef={frameRef} onBridge={onBridge} />
+          </div>
+        </div>
       ) : null}
     </main>
   );

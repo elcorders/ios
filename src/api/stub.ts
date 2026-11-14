@@ -1,6 +1,6 @@
-import type { S1Api, S2Api, S6Api, S7Api, S8Api, S9Api, S10Api, S3Api, S13Api, S14Api, S16Api, S17Api, S19Api, S21Api } from './types';
+import type { S1Api, S2Api, S6Api, S7Api, S8Api, S9Api, S10Api, S3Api, S13Api, S14Api, S16Api, S17Api, S19Api, S21Api, S23Api } from './types';
 
-type SliceApi = S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api & S21Api;
+type SliceApi = S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api & S21Api & S23Api;
 
 /** Placeholder for methods a slice's F (mock) or I (supabase) task has not implemented yet. */
 const S1_METHODS = [
@@ -43,6 +43,8 @@ const S1_METHODS = [
   // S21
   'kioskPairStart', 'kioskPairStatus', 'kioskSignIn', 'kioskSignOut', 'kioskHeartbeat', 'kioskFeed', 'kioskGetContent',
   'kioskPairLookup', 'kioskPairApprove', 'adminListKiosks', 'adminUpdateKiosk', 'adminRevokeKiosk', 'adminSetKioskCohort',
+  // S23
+  'kioskControlStart', 'kioskControlHeartbeat', 'kioskControlEnd', 'kioskControlState', 'kioskCurrentControl', 'kioskRemoteChannel',
 ] as const satisfies readonly (keyof SliceApi)[];
 
 // Compile-time check that S1_METHODS lists every slice method.

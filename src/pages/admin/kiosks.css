@@ -10,3 +10,4 @@
 .kiosk-dot.on { background: #2fb36b; }
 .kiosk-meta { margin: 0; font-size: 0.8125rem; overflow-wrap: anywhere; }
 .kiosk-item .row button, #kiosk-current-cohort { min-height: 2.75rem; }
+.kiosk-item .row .button { min-height: 2.75rem; display: inline-flex; align-items: center; }

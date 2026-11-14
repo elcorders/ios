@@ -136,6 +136,7 @@ export function KiosksPage() {
             </p>
             {d.revoked_at ? null : (
               <div className="row">
+                <Link className="button primary" to={`/admin/kiosks/${d.id}/remote`} aria-label={`Remote ${d.name}`}>Remote</Link>
                 <button type="button" aria-label={`Edit ${d.name}`} onClick={() => openEdit(d)}>Rename / cohort</button>
                 <button type="button" aria-label={`Revoke ${d.name}`} onClick={() => openRevoke(d)}>Revoke</button>
               </div>
