@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -731,6 +760,162 @@ export type Database = {
           },
         ]
       }
+      kiosk_challenges: {
+        Row: {
+          created_at: string
+          device_id: string
+          expires_at: string
+          nonce: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          expires_at?: string
+          nonce: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          expires_at?: string
+          nonce?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_challenges_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_devices: {
+        Row: {
+          cohort_id: string | null
+          created_at: string
+          id: string
+          ip_changed: boolean
+          last_ip: string | null
+          last_seen_at: string | null
+          last_user_agent: string | null
+          name: string
+          paired_by: string | null
+          public_key: Json
+          revoked_at: string | null
+          revoked_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cohort_id?: string | null
+          created_at?: string
+          id?: string
+          ip_changed?: boolean
+          last_ip?: string | null
+          last_seen_at?: string | null
+          last_user_agent?: string | null
+          name: string
+          paired_by?: string | null
+          public_key: Json
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cohort_id?: string | null
+          created_at?: string
+          id?: string
+          ip_changed?: boolean
+          last_ip?: string | null
+          last_seen_at?: string | null
+          last_user_agent?: string | null
+          name?: string
+          paired_by?: string | null
+          public_key?: Json
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_devices_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_devices_paired_by_fkey"
+            columns: ["paired_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_devices_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_pairings: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          code_hash: string
+          created_at: string
+          created_ip: string
+          device_id: string | null
+          expires_at: string
+          id: string
+          public_key: Json
+          status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          code_hash: string
+          created_at?: string
+          created_ip: string
+          device_id?: string | null
+          expires_at?: string
+          id?: string
+          public_key: Json
+          status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          code_hash?: string
+          created_at?: string
+          created_ip?: string
+          device_id?: string | null
+          expires_at?: string
+          id?: string
+          public_key?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_pairings_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_pairings_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lab_closures: {
         Row: {
           created_at: string
@@ -1409,6 +1594,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_list_kiosks: { Args: never; Returns: Json }
       admin_list_lab_bookings: {
         Args: { p_from: string; p_to: string }
         Returns: Json[]
@@ -1431,7 +1617,11 @@ export type Database = {
         Returns: Json
       }
       admin_push_audience: {
-        Args: { p_cohort_id: string; p_group_nos?: number[]; p_user_id?: string }
+        Args: {
+          p_cohort_id: string
+          p_group_nos?: number[]
+          p_user_id?: string
+        }
         Returns: Json
       }
       admin_push_custom: {
@@ -1454,6 +1644,7 @@ export type Database = {
         Args: { p_cohort_id: string; p_enrolment_ids: string[] }
         Returns: Json
       }
+      admin_revoke_kiosk: { Args: { p_id: string }; Returns: Json }
       admin_set_content_publish: {
         Args: { p_id: string; p_notify?: boolean; p_published_at?: string }
         Returns: Json
@@ -1465,6 +1656,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_kiosk_cohort: { Args: { p_cohort_id: string }; Returns: Json }
       admin_set_lab_hours: { Args: { p_hours: Json }; Returns: Json[] }
       admin_set_link_versions: {
         Args: { p_content_ids: string[]; p_version_id: string }
@@ -1487,6 +1679,10 @@ export type Database = {
       }
       admin_update_cohort_settings: {
         Args: { p_cohort_id: string; p_patch: Json }
+        Returns: Json
+      }
+      admin_update_kiosk: {
+        Args: { p_cohort_id: string; p_id: string; p_name: string }
         Returns: Json
       }
       admin_update_profile: {
@@ -1696,6 +1892,30 @@ export type Database = {
         }
         Returns: string
       }
+      current_kiosk_device: {
+        Args: never
+        Returns: {
+          cohort_id: string | null
+          created_at: string
+          id: string
+          ip_changed: boolean
+          last_ip: string | null
+          last_seen_at: string | null
+          last_user_agent: string | null
+          name: string
+          paired_by: string | null
+          public_key: Json
+          revoked_at: string | null
+          revoked_by: string | null
+          user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "kiosk_devices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_push_subscription: { Args: { p_endpoint: string }; Returns: Json }
       deliverables_ok: { Args: { p_items: string[] }; Returns: boolean }
       email_change_check: {
@@ -1730,8 +1950,44 @@ export type Database = {
       }
       instructs_user: { Args: { p_user_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_kiosk: { Args: never; Returns: boolean }
       is_member: { Args: { p_cohort_id: string }; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
       iso_colombo: { Args: { p_ts: string }; Returns: string }
+      kiosk_code_hash: { Args: { p_code: string }; Returns: string }
+      kiosk_code_normalise: { Args: { p_code: string }; Returns: string }
+      kiosk_cohort: { Args: { p_device_id: string }; Returns: string }
+      kiosk_content_visible: {
+        Args: {
+          p_cohort_id: string
+          p_item: Database["public"]["Tables"]["content_items"]["Row"]
+        }
+        Returns: boolean
+      }
+      kiosk_device_json: {
+        Args: { d: Database["public"]["Tables"]["kiosk_devices"]["Row"] }
+        Returns: Json
+      }
+      kiosk_feed: { Args: never; Returns: Json }
+      kiosk_get_content: { Args: { p_id: string }; Returns: Json }
+      kiosk_heartbeat: { Args: never; Returns: Json }
+      kiosk_label: {
+        Args: { p_first: string; p_index_no: string; p_last: string }
+        Returns: string
+      }
+      kiosk_pair_approve: {
+        Args: { p_code: string; p_cohort_id?: string; p_name: string }
+        Returns: Json
+      }
+      kiosk_pair_lookup: { Args: { p_code: string }; Returns: Json }
+      kiosk_prune: { Args: never; Returns: undefined }
+      kiosk_session_json: {
+        Args: {
+          p_now: string
+          p_s: Database["public"]["Tables"]["class_sessions"]["Row"]
+        }
+        Returns: Json
+      }
       lab_block_until: { Args: { p_date: string }; Returns: string }
       lab_booked: { Args: { p_slot: string }; Returns: number }
       lab_booking_json: {
@@ -1929,6 +2185,10 @@ export type Database = {
           url: string
           user_id: string
         }[]
+      }
+      push_custom_check: {
+        Args: { p_cohort_id: string; p_group_nos: number[]; p_user_id: string }
+        Returns: undefined
       }
       push_enqueue: {
         Args: {

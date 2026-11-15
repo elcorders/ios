@@ -117,8 +117,10 @@ export function useKiosk() {
     if (phase !== 'ready') return;
     void loadFeed();
     const t = window.setInterval(() => void loadFeed(), MINUTE);
-    const h = window.setInterval(() => void api.kioskHeartbeat(), MINUTE);
-    void api.kioskHeartbeat();
+    // A rejected heartbeat (revoked device, expired token) reloads the feed, which signs in again or returns to pairing.
+    const beat = () => void api.kioskHeartbeat().then((r) => { if (!r.ok && r.error.code === 'forbidden') void loadFeed(); });
+    const h = window.setInterval(beat, MINUTE);
+    beat();
     return () => {
       window.clearInterval(t);
       window.clearInterval(h);

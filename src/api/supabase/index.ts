@@ -8,6 +8,7 @@ import { transferMethods } from './transfers';
 import { labMethods } from './lab';
 import { sessionMethods } from './sessions';
 import { pushMethods } from './push';
+import { kioskMethods } from './kiosk';
 
 /** Supabase adapter. The client is created lazily, on the first method call that needs it. */
 export const supabaseApi: Api = {
@@ -20,6 +21,7 @@ export const supabaseApi: Api = {
   ...labMethods,
   ...sessionMethods,
   ...pushMethods,
+  ...kioskMethods,
   async health() {
     return { ok: true, data: { adapter: 'supabase', ok: true } };
   },
