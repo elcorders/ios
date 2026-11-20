@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { Survey } from './pages/Survey';
 import { SecuritySetup } from './pages/SecuritySetup';
 import { AdminLayout } from './pages/admin/AdminLayout';
+import { KioskRemotePage } from './pages/admin/KioskRemotePage';
 import { LmsLanding } from './pages/LmsLanding';
 import { Resources } from './pages/Resources';
 import { Tutorials } from './pages/Tutorials';
@@ -41,6 +42,7 @@ export const routes: RouteObject[] = [
       { path: 'notifications', element: <RequireAuth><Notifications /></RequireAuth> },
       { path: 'kiosk/pair', element: <RequireAuth><KioskPair /></RequireAuth> },
       { path: 'c/:id', element: <RequireAuth><ContentView /></RequireAuth> },
+      { path: 'admin/kiosks/:id/remote', element: <RequireAuth><KioskRemotePage /></RequireAuth> },
       { path: 'admin/*', element: <RequireAuth><AdminLayout /></RequireAuth> },
       { path: 'login', element: <Login /> },
       { path: 'lms', element: <LmsLanding /> },

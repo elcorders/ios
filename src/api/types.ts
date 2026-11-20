@@ -21,7 +21,7 @@ export interface CoreApi {
 }
 
 /** Full API surface; each slice adds its interface here (CONTRACT.md). */
-export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api & S21Api;
+export type Api = CoreApi & S1Api & S2Api & S6Api & S7Api & S8Api & S9Api & S10Api & S3Api & S13Api & S14Api & S16Api & S17Api & S19Api & S21Api & S23Api;
 
 // ───────────────────────── S1 — Auth, cohorts, roster (CONTRACT.md §S1) ─────────────────────────
 
@@ -1042,4 +1042,90 @@ export interface S21Api {
   adminUpdateKiosk(id: Uuid, name: string, cohortId: Uuid | null): Promise<Result<KioskDevice>>;
   adminRevokeKiosk(id: Uuid): Promise<Result<KioskDevice>>;
   adminSetKioskCohort(cohortId: Uuid | null): Promise<Result<{ current_cohort_id: Uuid | null }>>;
+}
+
+// ───────────── S23 kiosk remote (CONTRACT §S23) ─────────────
+export interface KioskControl {
+  id: Uuid;
+  device_id: Uuid;
+  controller_id: Uuid;
+  controller_name: string;
+  started_at: IsoDateTime;
+  last_heartbeat_at: IsoDateTime;
+  /** last_heartbeat_at + 60 s. */
+  expires_at: IsoDateTime;
+}
+
+/** Scroll position as an anchor element + offset inside it (0..1), with a whole-page fraction fallback. */
+export interface KioskScroll {
+  anchor: string | null;
+  offset: number;
+  fraction: number;
+}
+
+export type KioskCommand =
+  | { type: 'hello' }
+  | { type: 'navigate'; view: 'home' }
+  | { type: 'navigate'; view: 'item'; item_id: Uuid }
+  | ({ type: 'scroll' } & KioskScroll)
+  | { type: 'click'; path: string; x: number; y: number }
+  | { type: 'input'; path: string; value: string }
+  | { type: 'toggle'; path: string; open: boolean }
+  | { type: 'tap'; x: number; y: number }
+  | { type: 'pointer'; x: number; y: number; visible: boolean }
+  | { type: 'zoom'; level: number }
+  | { type: 'blank'; on: boolean }
+  | { type: 'reload' }
+  | { type: 'release' };
+
+export interface KioskCommandMessage {
+  v: 1;
+  lease_id: Uuid;
+  seq: number;
+  cmd: KioskCommand;
+}
+
+export interface KioskMenuItem {
+  id: Uuid;
+  kind: ContentKind;
+  title: string;
+}
+
+export interface KioskRemoteState {
+  v: 1;
+  device_id: Uuid;
+  lease_id: Uuid | null;
+  controller_name: string | null;
+  ack_seq: number | null;
+  view: 'home' | 'item';
+  item_id: Uuid | null;
+  item_title: string | null;
+  scroll: KioskScroll;
+  zoom: number;
+  blank: boolean;
+  viewport: { w: number; h: number };
+  /** Only in the reply to `hello`. */
+  menu?: KioskMenuItem[];
+}
+
+export type KioskChannelEvent = 'cmd' | 'state';
+
+export interface KioskChannel {
+  send(event: 'cmd', payload: KioskCommandMessage): void;
+  send(event: 'state', payload: KioskRemoteState): void;
+  on(event: 'cmd', cb: (payload: unknown) => void): () => void;
+  on(event: 'state', cb: (payload: unknown) => void): () => void;
+  close(): void;
+}
+
+export interface S23Api {
+  // Controller (signed-in admin)
+  kioskControlStart(deviceId: Uuid, takeOver: boolean): Promise<Result<KioskControl>>;
+  kioskControlHeartbeat(id: Uuid): Promise<Result<KioskControl>>;
+  kioskControlEnd(id: Uuid): Promise<Result<{ ok: true }>>;
+  kioskControlState(deviceId: Uuid): Promise<Result<{ lease: KioskControl | null }>>;
+  // Kiosk (own device, kiosk client)
+  kioskCurrentControl(): Promise<Result<{ lease: KioskControl | null }>>;
+  /** Join the private Realtime channel `kiosk:<deviceId>` (payloads arrive unvalidated: check them). */
+  kioskRemoteChannel(deviceId: Uuid, side: 'kiosk' | 'controller'): Promise<Result<KioskChannel>>;
 }

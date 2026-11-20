@@ -10,6 +10,7 @@ import { mockLab } from './lab';
 import { mockSessions } from './sessions';
 import { mockPush } from './push';
 import { mockKiosk } from './kiosk';
+import { mockKioskRemote } from './kioskRemote';
 
 export const mockApi: Api = {
   ...notImplemented('mock'),
@@ -23,6 +24,7 @@ export const mockApi: Api = {
   ...mockSessions,
   ...mockPush,
   ...mockKiosk,
+  ...mockKioskRemote,
   async health() {
     return { ok: true, data: { adapter: 'mock', ok: true } };
   },

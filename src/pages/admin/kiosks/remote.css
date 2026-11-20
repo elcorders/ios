@@ -1,0 +1,21 @@
+/* S23 kiosk remote (controller). Touch-first: every control ≥ 44px. */
+.remote-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.remote-head h1 { margin: 0; font-size: 1.35rem; flex: 1; min-width: 12rem; }
+.remote-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; position: sticky; top: 0; z-index: 5; padding: 0.5rem 0; background: var(--bg); }
+.remote-toolbar button { min-height: 2.75rem; min-width: 2.75rem; }
+.remote-toolbar button[aria-pressed='true'] { outline: 2px solid var(--accent, #2f6fed); outline-offset: 1px; }
+.remote-group { display: inline-flex; gap: 0.25rem; }
+.remote-showing { margin: 0; }
+.remote-body { display: grid; gap: 0.75rem; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .remote-body { grid-template-columns: minmax(0, 1fr) 18rem; } }
+.remote-stage { position: relative; padding: 0; overflow: hidden; height: min(70vh, 48rem); min-height: 18rem; display: flex; flex-direction: column; }
+.remote-empty, .remote-board { padding: 1rem; }
+.remote-board input[type='range'] { width: 100%; min-height: 2.75rem; }
+.remote-frame { flex: 1; min-height: 0; }
+.remote-frame .content-frame { height: 100%; border-radius: 0; }
+.remote-pointer-pad { position: absolute; inset: 0; z-index: 2; cursor: crosshair; touch-action: none; background: rgba(255, 45, 45, 0.04); }
+.remote-menu h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+.remote-menu ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.375rem; max-height: 60vh; overflow: auto; }
+.remote-menu button { width: 100%; min-height: 2.75rem; display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 0.125rem; }
+.remote-menu button.active { outline: 2px solid var(--accent, #2f6fed); }
+.remote-menu .muted { font-size: 0.8125rem; }

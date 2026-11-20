@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { KioskContent, KioskFeed, KioskLabHour, KioskPerson, KioskSession } from '../../api/types';
 import { colomboDate, colomboHM, countdown, withinHours } from '../../lib/kiosk';
 import { formatColombo } from '../../lib/time';
 import { Logo } from './Logo';
 import { useNow, useWakeLock } from './useKiosk';
+
+/** S23 remote zoom: CSS zoom with the box shrunk by the same factor, so it still fills its container. */
+export function zoomStyle(zoom: number): CSSProperties | undefined {
+  if (zoom === 1) return undefined;
+  return { zoom, width: `${100 / zoom}%`, height: `${100 / zoom}%` } as CSSProperties;
+}
 
 /** Keep `?demo=` etc. when moving around inside the kiosk. */
 export function useKioskTo() {
@@ -63,7 +69,9 @@ export function KioskHeader({ feed, online, now, refresh }: { feed: KioskFeed | 
   );
 }
 
-export function Board({ feed, online, skew, refresh }: { feed: KioskFeed | null; online: boolean; skew: number; refresh?: KioskRefresh }) {
+export function Board({ feed, online, skew, refresh, zoom = 1 }: {
+  feed: KioskFeed | null; online: boolean; skew: number; refresh?: KioskRefresh; zoom?: number;
+}) {
   const now = useNow(skew);
   useWakeLock(withinHours(now, feed?.lab_hours_today ?? null));
   return (
@@ -74,7 +82,7 @@ export function Board({ feed, online, skew, refresh }: { feed: KioskFeed | null;
       ) : !feed.cohort ? (
         <p className="kiosk-big kiosk-empty">No cohort selected for this screen.</p>
       ) : (
-        <div className="kiosk-body">
+        <div className="kiosk-body" style={zoom === 1 ? undefined : ({ zoom } as CSSProperties)}>
           <section className="kiosk-main" aria-label="Class and lab">
             {feed.session_now ? (
               <ClassNow session={feed.session_now} />
