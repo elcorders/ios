@@ -59,11 +59,13 @@ test('kiosk: pair from the admin phone, board, reload keeps the key, admin sees 
   await expect(row).toBeVisible();
   await expect(row.getByText('Online')).toBeVisible();
 
-  // Revoke: the kiosk notices on its next heartbeat / feed poll (every 60 s, no reload needed) and shows pairing again.
+  // Revoke: the server denies the device at once; the screen notices on its next check (15 min) or a manual
+  // Refresh (S21.F4), which the test uses, and shows pairing again.
   await row.getByRole('button', { name: `Revoke ${NAME}` }).click();
   await phone.getByRole('dialog').getByRole('button', { name: 'Revoke' }).click();
   await expect(phone.locator('li.kiosk-item', { hasText: NAME }).getByText(/^Revoked/)).toBeVisible();
-  await expect(kiosk.getByRole('heading', { name: 'Activate this screen' })).toBeVisible({ timeout: 90_000 });
+  await kiosk.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(kiosk.getByRole('heading', { name: 'Activate this screen' })).toBeVisible({ timeout: 30_000 });
 
   await kCtx.close();
   await aCtx.close();

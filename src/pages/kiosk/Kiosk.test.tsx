@@ -6,6 +6,7 @@ import { api } from '../../api';
 import { notImplemented } from '../../api/stub';
 import { resetMockKiosk } from '../../api/mock/kiosk';
 import type { KioskRecord } from '../../lib/kioskKey';
+import { colomboAt, colomboDate } from '../../lib/kiosk';
 
 // The key store needs IndexedDB; the page logic is tested against an in-memory record.
 const store = vi.hoisted(() => ({ rec: null as null | Record<string, unknown>, insecure: false }));
@@ -123,7 +124,8 @@ describe('kiosk board', () => {
   });
 
   it('?demo=lab shows the next class and the lab hours with chips and a clash', async () => {
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-14T14:20:00+05:30') });
+    // Today at 14:20 (not a fixed date: the mock sessions are placed relative to the real today).
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(colomboAt(colomboDate(Date.now()), '14:20')) });
     open('/kiosk?demo=lab');
     const next = await screen.findByRole('article', { name: 'Next class' });
     expect(within(next).getByText(/Tutorial 2/)).toBeInTheDocument();
@@ -156,7 +158,7 @@ describe('kiosk board', () => {
     expect(await screen.findByText(/Lab closed today · Public holiday \(fictional\)/)).toBeInTheDocument();
   });
 
-  it('sends a heartbeat and holds the wake lock inside lab hours only', async () => {
+  it('holds the wake lock inside lab hours only and sends no separate heartbeat (S21.F4)', async () => {
     const request = vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) });
     Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request } });
     const beat = vi.spyOn(api, 'kioskHeartbeat');
@@ -164,7 +166,7 @@ describe('kiosk board', () => {
     const { unmount } = open('/kiosk?demo=lab');
     await screen.findByRole('article', { name: 'Today in the lab' });
     await waitFor(() => expect(request).toHaveBeenCalledWith('screen'));
-    expect(beat).toHaveBeenCalled();
+    expect(beat).not.toHaveBeenCalled();
     unmount();
     request.mockClear();
     vi.setSystemTime(new Date('2026-11-14T21:00:00+05:30'));
@@ -173,6 +175,23 @@ describe('kiosk board', () => {
     await screen.findByRole('article', { name: 'In class now' });
     expect(request).not.toHaveBeenCalled();
     Reflect.deleteProperty(navigator, 'wakeLock');
+  });
+});
+
+describe('kiosk manual refresh (S21.F4)', () => {
+  beforeEach(paired);
+
+  it('reloads the feed, then backs off: 30 s, then 1 min', async () => {
+    const feed = vi.spyOn(api, 'kioskFeed');
+    open('/kiosk?demo=lab');
+    await screen.findByRole('article', { name: 'Today in the lab' });
+    const before = feed.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await waitFor(() => expect(feed.mock.calls.length).toBe(before + 1));
+    const waiting = await screen.findByRole('button', { name: /^Refresh in 0:(30|29)$/ });
+    expect(waiting).toBeDisabled();
+    fireEvent.click(waiting);
+    expect(feed.mock.calls.length).toBe(before + 1);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import type { KioskFeed } from '../../api/types';
-import { nextBoundary } from '../../lib/kiosk';
+import { inActiveWindow, nextBoundary, nextCheckAt, refreshTap, type RefreshState } from '../../lib/kiosk';
 import {
   forget, getOrCreateRecord, kioskCryptoAvailable, sign, updateRecord, type KioskRecord,
 } from '../../lib/kioskKey';
@@ -10,11 +10,15 @@ export type KioskPhase = 'init' | 'insecure' | 'pairing' | 'connecting' | 'ready
 
 const MINUTE = 60_000;
 const RETRY_MS = 10_000;
+/** After a failed check inside the active window, try again sooner than 15 min. */
+const FAIL_RETRY_MS = 2 * MINUTE;
 const isMock = import.meta.env.VITE_API !== 'supabase';
 
 /**
  * The kiosk device life cycle: key → pairing → sign-in → board. Keeps its own memory-only session
- * (refreshed 5 min before it ends), polls the feed every minute and at slot boundaries, and sends heartbeats.
+ * (refreshed 5 min before it ends, only inside the active window). S21.F4: the feed (which also marks the device
+ * as seen) loads every 15 min and at slot boundaries, only within lab hours ± 30 min; outside, once after midnight
+ * for the new day's hours. `refresh()` is a manual check with a growing cooldown.
  */
 export function useKiosk() {
   const [phase, setPhase] = useState<KioskPhase>('init');
@@ -25,6 +29,10 @@ export function useKiosk() {
   const alive = useRef(true);
   const deviceId = useRef<string | null>(null);
   const refreshTimer = useRef<number | undefined>(undefined);
+  /** Today's lab hours from the last feed; undefined until the first feed (then the session is always refreshed). */
+  const hoursRef = useRef<KioskFeed['lab_hours_today'] | undefined>(undefined);
+  const [loadedAt, setLoadedAt] = useState(0);
+  const [manual, setManual] = useState<RefreshState | null>(null);
 
   const toPairing = useCallback(async () => {
     window.clearTimeout(refreshTimer.current);
@@ -47,7 +55,11 @@ export function useKiosk() {
       if (r.ok) {
         const wait = Math.max(5_000, Date.parse(r.data.expires_at) - 5 * MINUTE - Date.now());
         window.clearTimeout(refreshTimer.current);
-        refreshTimer.current = window.setTimeout(() => void signIn(id), Math.min(wait, 2 ** 31 - 1));
+        // Outside the active window the session is left to expire; the next check signs in again (403 → signIn).
+        refreshTimer.current = window.setTimeout(() => {
+          const h = hoursRef.current;
+          if (h === undefined || inActiveWindow(Date.now(), h)) void signIn(id);
+        }, Math.min(wait, 2 ** 31 - 1));
         setPhase('ready');
         setOnline(true);
         return true;
@@ -105,27 +117,28 @@ export function useKiosk() {
     }
     if (!alive.current) return;
     if (r.ok) {
+      hoursRef.current = r.data.lab_hours_today;
       setFeed(r.data);
       setSkew(Date.parse(r.data.now) - Date.now());
       setOnline(true);
     } else setOnline(false);
+    setLoadedAt(Date.now());
   }, [signIn]);
 
-  // Feed: now, every minute, and at the next slot boundary.
-  const boundaryKey = feed ? nextBoundary(feed, Date.now() + skew) : null;
+  // Feed: once when ready, then on the schedule (15 min inside lab hours ± 30 min, else the next window / midnight).
   useEffect(() => {
     if (phase !== 'ready') return;
     void loadFeed();
-    const t = window.setInterval(() => void loadFeed(), MINUTE);
-    // A rejected heartbeat (revoked device, expired token) reloads the feed, which signs in again or returns to pairing.
-    const beat = () => void api.kioskHeartbeat().then((r) => { if (!r.ok && r.error.code === 'forbidden') void loadFeed(); });
-    const h = window.setInterval(beat, MINUTE);
-    beat();
-    return () => {
-      window.clearInterval(t);
-      window.clearInterval(h);
-    };
   }, [phase, loadFeed]);
+  const hours = feed?.lab_hours_today ?? null;
+  const boundaryKey = feed ? nextBoundary(feed, Date.now() + skew) : null;
+  useEffect(() => {
+    if (phase !== 'ready' || loadedAt === 0) return;
+    const now = loadedAt + skew;
+    const at = nextCheckAt(now, hours, online ? undefined : FAIL_RETRY_MS);
+    const t = window.setTimeout(() => void loadFeed(), Math.min(Math.max(at - now, 1_000), 2 ** 31 - 1));
+    return () => window.clearTimeout(t);
+  }, [phase, loadedAt, skew, hours, online, loadFeed]);
   // Typing a new ?demo= in the address bar only changes the hash: reload the feed.
   useEffect(() => {
     if (phase !== 'ready') return;
@@ -134,13 +147,24 @@ export function useKiosk() {
     return () => window.removeEventListener('hashchange', onHash);
   }, [phase, loadFeed]);
   useEffect(() => {
-    if (phase !== 'ready' || boundaryKey === null) return;
+    if (phase !== 'ready' || boundaryKey === null || !inActiveWindow(boundaryKey, hours)) return;
     const wait = boundaryKey - (Date.now() + skew) + 1_000;
     const t = window.setTimeout(() => void loadFeed(), Math.min(Math.max(wait, 1_000), 2 ** 31 - 1));
     return () => window.clearTimeout(t);
-  }, [phase, boundaryKey, skew, loadFeed]);
+  }, [phase, boundaryKey, skew, hours, loadFeed]);
 
-  return { phase, record, feed, online, skew, approved, restartPairing: toPairing };
+  /** Manual check, any time; ignored while the back-off cooldown runs. */
+  const refresh = useCallback(() => {
+    const now = Date.now();
+    if (phase !== 'ready' || (manual && now < manual.until)) return;
+    setManual(refreshTap(manual, now));
+    void loadFeed();
+  }, [phase, manual, loadFeed]);
+
+  return {
+    phase, record, feed, online, skew, approved, restartPairing: toPairing,
+    refresh, refreshUntil: manual?.until ?? 0, loadedAt,
+  };
 }
 
 /** Wall clock (ms), corrected by the server skew, refreshed every few seconds. */

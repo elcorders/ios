@@ -30,7 +30,7 @@ export function Kiosk() {
   }
   if (k.phase === 'pairing' && k.record) return <PairingScreen record={k.record} onApproved={k.approved} />;
   if (k.phase === 'ready') {
-    return id ? <Viewer key={id} id={id} feed={k.feed} online={k.online} /> : <Board feed={k.feed} online={k.online} skew={k.skew} />;
+    return id ? <Viewer key={id} id={id} feed={k.feed} online={k.online} /> : <Board feed={k.feed} online={k.online} skew={k.skew} refresh={{ onRefresh: k.refresh, until: k.refreshUntil }} />;
   }
   return (
     <main className="kiosk kiosk-center">

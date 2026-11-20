@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { KioskFeed, KioskSession } from '../api/types';
-import { colomboHM, countdown, demoParam, formatCode, isWellFormedCode, nextBoundary, normaliseCode, shortLabel, withinHours } from './kiosk';
+import { colomboAt, colomboHM, countdown, demoParam, formatCode, inActiveWindow, isWellFormedCode, nextBoundary, nextCheckAt, normaliseCode, refreshTap, shortLabel, withinHours } from './kiosk';
 
 describe('pairing code', () => {
   it('normalises per the contract', () => {
@@ -64,5 +64,38 @@ describe('demoParam', () => {
     expect(demoParam('#/kiosk?x=1&demo=lab')).toBe('lab');
     expect(demoParam('#/kiosk?demo=other')).toBeNull();
     expect(demoParam('#/kiosk')).toBeNull();
+  });
+});
+
+describe('S21.F4 check schedule', () => {
+  const H = { open: '08:00', close: '17:00' };
+  const at = (hm: string, date = '2026-11-21') => colomboAt(date, hm);
+  it('active window is lab hours ± 30 min', () => {
+    expect(inActiveWindow(at('07:29'), H)).toBe(false);
+    expect(inActiveWindow(at('07:30'), H)).toBe(true);
+    expect(inActiveWindow(at('17:29'), H)).toBe(true);
+    expect(inActiveWindow(at('17:30'), H)).toBe(false);
+    expect(inActiveWindow(at('12:00'), null)).toBe(false);
+  });
+  it('every 15 min inside, window start before it, 00:05 tomorrow after it or on a closed day', () => {
+    expect(nextCheckAt(at('10:00'), H)).toBe(at('10:15'));
+    expect(nextCheckAt(at('10:00'), H, 120_000)).toBe(at('10:02'));
+    expect(nextCheckAt(at('06:00'), H)).toBe(at('07:30'));
+    expect(nextCheckAt(at('17:20'), H)).toBe(at('00:05', '2026-11-22'));
+    expect(nextCheckAt(at('20:00'), H)).toBe(at('00:05', '2026-11-22'));
+    expect(nextCheckAt(at('09:00'), null)).toBe(at('00:05', '2026-11-22'));
+    expect(nextCheckAt(at('00:01'), null)).toBe(at('00:05'));
+  });
+  it('manual refresh backs off 30 s → 15 min and resets after 15 min quiet', () => {
+    let r = refreshTap(null, 0);
+    expect(r.until).toBe(30_000);
+    const seen = [r.until - r.lastTap];
+    for (let i = 0; i < 6; i++) {
+      r = refreshTap(r, r.until);
+      seen.push(r.until - r.lastTap);
+    }
+    expect(seen).toEqual([30_000, 60_000, 120_000, 240_000, 480_000, 900_000, 900_000]);
+    expect(refreshTap(r, r.until + 15 * 60_000 - 1).level).toBe(5);
+    expect(refreshTap(r, r.until + 15 * 60_000).level).toBe(0);
   });
 });

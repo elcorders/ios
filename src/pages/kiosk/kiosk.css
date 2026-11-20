@@ -34,6 +34,11 @@
 .kiosk-conn .dot { width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 0.25em rgba(61, 220, 151, 0.18); }
 .kiosk-conn.off { color: var(--danger); }
 .kiosk-conn.off .dot { background: var(--danger); box-shadow: 0 0 0 0.25em var(--danger-soft); }
+.kiosk-refresh {
+  min-height: 2.6em; padding: 0.4em 1em; border-radius: 0.8em; font: inherit; font-size: 0.95em; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text);
+}
+.kiosk-refresh:disabled { color: var(--muted); cursor: default; font-variant-numeric: tabular-nums; }
 .kiosk-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; margin-left: 0.5em; }
 .kiosk-clock strong { font-size: 2.4em; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .kiosk-clock span { color: var(--muted); font-size: 1em; }

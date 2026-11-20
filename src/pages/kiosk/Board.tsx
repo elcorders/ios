@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { KioskContent, KioskFeed, KioskLabHour, KioskPerson, KioskSession } from '../../api/types';
-import { colomboDate, colomboHM, withinHours } from '../../lib/kiosk';
+import { colomboDate, colomboHM, countdown, withinHours } from '../../lib/kiosk';
 import { formatColombo } from '../../lib/time';
 import { Logo } from './Logo';
 import { useNow, useWakeLock } from './useKiosk';
@@ -20,7 +20,26 @@ const dayText = (date: string, now: number) => {
   return formatColombo(`${date}T12:00:00+05:30`, { weekday: 'long', day: 'numeric', month: 'short' });
 };
 
-export function KioskHeader({ feed, online, now }: { feed: KioskFeed | null; online: boolean; now: number }) {
+/** Manual check (S21.F4): `until` is the end of the back-off cooldown (device clock, ms). */
+export interface KioskRefresh { onRefresh: () => void; until: number }
+
+/** Milliseconds left until `until`, ticking every second while > 0. */
+function useCooldown(until: number): number {
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    const update = () => setLeft(Math.max(0, until - Date.now()));
+    const first = window.setTimeout(update, 0);
+    const t = window.setInterval(update, 1_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(t);
+    };
+  }, [until]);
+  return left;
+}
+
+export function KioskHeader({ feed, online, now, refresh }: { feed: KioskFeed | null; online: boolean; now: number; refresh?: KioskRefresh }) {
+  const wait = useCooldown(refresh?.until ?? 0);
   return (
     <header className="kiosk-header">
       <Logo />
@@ -31,6 +50,11 @@ export function KioskHeader({ feed, online, now }: { feed: KioskFeed | null; onl
         <span className="dot" aria-hidden="true" />
         {online ? 'Connected' : 'Offline'}
       </span>
+      {refresh ? (
+        <button type="button" className="kiosk-refresh" onClick={refresh.onRefresh} disabled={wait > 0}>
+          {wait > 0 ? `Refresh in ${countdown(wait)}` : 'Refresh'}
+        </button>
+      ) : null}
       <span className="kiosk-clock">
         <strong>{colomboHM(now)}</strong>
         <span>{formatColombo(new Date(now).toISOString(), { weekday: 'short', day: 'numeric', month: 'short' })}</span>
@@ -39,12 +63,12 @@ export function KioskHeader({ feed, online, now }: { feed: KioskFeed | null; onl
   );
 }
 
-export function Board({ feed, online, skew }: { feed: KioskFeed | null; online: boolean; skew: number }) {
+export function Board({ feed, online, skew, refresh }: { feed: KioskFeed | null; online: boolean; skew: number; refresh?: KioskRefresh }) {
   const now = useNow(skew);
   useWakeLock(withinHours(now, feed?.lab_hours_today ?? null));
   return (
     <main className="kiosk kiosk-board">
-      <KioskHeader feed={feed} online={online} now={now} />
+      <KioskHeader feed={feed} online={online} now={now} refresh={refresh} />
       {!feed ? (
         <p role="status" className="kiosk-big muted kiosk-empty">Loading…</p>
       ) : !feed.cohort ? (

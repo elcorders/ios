@@ -42,6 +42,43 @@ export function withinHours(ms: number, hours: { open: string; close: string } |
   return m >= minutes(hours.open) && m < minutes(hours.close);
 }
 
+/** S21.F4: scheduled checks every 15 min, only within lab hours ± 30 min (CONTRACT §S21). */
+export const CHECK_EVERY_MS = 15 * 60_000;
+export const ACTIVE_PAD_MIN = 30;
+const MIDNIGHT_CHECK_MIN = 5;
+
+/** Is `ms` within [open − pad, close + pad) of today's lab hours? */
+export function inActiveWindow(ms: number, hours: { open: string; close: string } | null, pad = ACTIVE_PAD_MIN): boolean {
+  if (!hours) return false;
+  const m = minutes(colomboHM(ms));
+  return m >= minutes(hours.open) - pad && m < minutes(hours.close) + pad;
+}
+
+/**
+ * When the next scheduled feed check should run. Inside the window: `every` from now (sooner after a failure).
+ * Outside: the window start later today, else 00:05 Colombo tomorrow (one check to learn the new day's hours).
+ */
+export function nextCheckAt(ms: number, hours: { open: string; close: string } | null, every = CHECK_EVERY_MS): number {
+  const today = colomboDate(ms);
+  if (hours) {
+    const start = colomboAt(today, hours.open) - ACTIVE_PAD_MIN * 60_000;
+    const end = colomboAt(today, hours.close) + ACTIVE_PAD_MIN * 60_000;
+    if (ms < start) return start;
+    if (ms + every < end) return ms + every;
+  }
+  const todayCheck = colomboAt(today, '00:00') + MIDNIGHT_CHECK_MIN * 60_000;
+  if (ms < todayCheck) return todayCheck;
+  return colomboAt(colomboDate(ms + 86_400_000), '00:00') + MIDNIGHT_CHECK_MIN * 60_000;
+}
+
+/** Manual refresh back-off: 30 s → 1 → 2 → 4 → 8 → 15 min; back to 30 s after 15 min quiet (counted from the end of the last cooldown). */
+export const REFRESH_STEPS_MS = [30_000, 60_000, 120_000, 240_000, 480_000, 900_000] as const;
+export interface RefreshState { level: number; lastTap: number; until: number }
+export function refreshTap(prev: RefreshState | null, now: number): RefreshState {
+  const level = prev && now - prev.until < 15 * 60_000 ? Math.min(prev.level + 1, REFRESH_STEPS_MS.length - 1) : 0;
+  return { level, lastTap: now, until: now + REFRESH_STEPS_MS[level]! };
+}
+
 /** Next session slot start or end (today, after `now`) so the feed can refresh when it flips; null when none. */
 export function nextBoundary(feed: KioskFeed, now: number): number | null {
   const today = colomboDate(now);
