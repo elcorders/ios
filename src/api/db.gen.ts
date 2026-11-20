@@ -792,6 +792,61 @@ export type Database = {
           },
         ]
       }
+      kiosk_control_sessions: {
+        Row: {
+          controller_id: string
+          device_id: string
+          end_reason: string | null
+          ended_at: string | null
+          id: string
+          last_heartbeat_at: string
+          started_at: string
+          taken_over_by: string | null
+        }
+        Insert: {
+          controller_id: string
+          device_id: string
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          last_heartbeat_at?: string
+          started_at?: string
+          taken_over_by?: string | null
+        }
+        Update: {
+          controller_id?: string
+          device_id?: string
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          last_heartbeat_at?: string
+          started_at?: string
+          taken_over_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_control_sessions_controller_id_fkey"
+            columns: ["controller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_control_sessions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_control_sessions_taken_over_by_fkey"
+            columns: ["taken_over_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kiosk_devices: {
         Row: {
           cohort_id: string | null
@@ -1781,6 +1836,7 @@ export type Database = {
         Args: { p_cohort_id: string; p_slot_starts: string[] }
         Returns: Json
       }
+      can_control_kiosk: { Args: never; Returns: boolean }
       cancel_transfer: { Args: { p_request_id: string }; Returns: Json }
       class_hhmm: { Args: { p_t: string }; Returns: string }
       class_parse_time: {
@@ -1964,6 +2020,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      kiosk_control_end: { Args: { p_id: string }; Returns: Json }
+      kiosk_control_expire: {
+        Args: { p_device_id: string }
+        Returns: undefined
+      }
+      kiosk_control_heartbeat: { Args: { p_id: string }; Returns: Json }
+      kiosk_control_json: {
+        Args: {
+          l: Database["public"]["Tables"]["kiosk_control_sessions"]["Row"]
+        }
+        Returns: Json
+      }
+      kiosk_control_start: {
+        Args: { p_device_id: string; p_take_over?: boolean }
+        Returns: Json
+      }
+      kiosk_control_state: { Args: { p_device_id: string }; Returns: Json }
+      kiosk_controller_name: { Args: { p_id: string }; Returns: string }
       kiosk_device_json: {
         Args: { d: Database["public"]["Tables"]["kiosk_devices"]["Row"] }
         Returns: Json
@@ -1975,12 +2049,21 @@ export type Database = {
         Args: { p_first: string; p_index_no: string; p_last: string }
         Returns: string
       }
+      kiosk_lease_ttl: { Args: never; Returns: string }
       kiosk_pair_approve: {
         Args: { p_code: string; p_cohort_id?: string; p_name: string }
         Returns: Json
       }
       kiosk_pair_lookup: { Args: { p_code: string }; Returns: Json }
       kiosk_prune: { Args: never; Returns: undefined }
+      kiosk_remote_can_receive: {
+        Args: { p_extension: string; p_topic: string }
+        Returns: boolean
+      }
+      kiosk_remote_can_send: {
+        Args: { p_event: string; p_extension: string; p_topic: string }
+        Returns: boolean
+      }
       kiosk_session_json: {
         Args: {
           p_now: string
@@ -1988,6 +2071,7 @@ export type Database = {
         }
         Returns: Json
       }
+      kiosk_topic_device: { Args: { p_topic: string }; Returns: string }
       lab_block_until: { Args: { p_date: string }; Returns: string }
       lab_booked: { Args: { p_slot: string }; Returns: number }
       lab_booking_json: {

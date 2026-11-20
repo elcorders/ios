@@ -11,8 +11,11 @@ import { callRpc } from './rpc';
  * tokens in memory only, never shared with the signed-in person's session.
  */
 let kioskClient: Supabase | undefined;
+/** The device this kiosk client signed in as (for `kioskCurrentControl`, S23). */
+let kioskDeviceId: string | null = null;
+export const currentKioskDevice = (): string | null => kioskDeviceId;
 
-function getKiosk(): Supabase {
+export function getKiosk(): Supabase {
   if (kioskClient) return kioskClient;
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -50,7 +53,7 @@ async function kioskFunction<T>(body: unknown): Promise<Result<T>> {
 }
 
 /** RPC through the kiosk client. An expired / rejected token (401, PGRST301/303) is `forbidden` (the kiosk signs in again). */
-async function kioskRpc<T>(name: string, args?: Record<string, unknown>): Promise<Result<T>> {
+export async function kioskRpc<T>(name: string, args?: Record<string, unknown>): Promise<Result<T>> {
   try {
     const sb = getKiosk();
     const rpc = sb.rpc.bind(sb) as unknown as (
@@ -99,6 +102,7 @@ export const kioskMethods: S21Api = {
         refresh_token: v.data.refresh_token,
       });
       if (error) return internalError();
+      kioskDeviceId = deviceId;
     } catch {
       return internalError();
     }
@@ -106,6 +110,7 @@ export const kioskMethods: S21Api = {
     return ok({ expires_at: new Date(v.data.expires_at * 1000).toISOString() });
   },
   async kioskSignOut() {
+    kioskDeviceId = null;
     if (kioskClient) await kioskClient.auth.signOut({ scope: 'local' }).catch(() => undefined);
     return ok({ ok: true as const });
   },

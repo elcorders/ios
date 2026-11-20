@@ -7,6 +7,8 @@ const NAME = 'E2E kiosk screen';
 /** Kiosk rows are removed by name (service role); the auth users the logins created go with them. */
 async function cleanKiosks(): Promise<void> {
   const sb = serviceClient();
+  // Unapproved pairings count towards kiosk-pair's 10 starts per IP per 10 min; clear them (ios-dev only).
+  await sb.from('kiosk_pairings').delete().is('device_id', null);
   const { data } = await sb.from('kiosk_devices').select('id, user_id').like('name', 'E2E %');
   for (const d of data ?? []) {
     await sb.from('kiosk_pairings').delete().eq('device_id', d.id);
