@@ -17,7 +17,7 @@ export function statusText(d: KioskDevice): string {
   return d.online ? 'Online' : `Last seen ${when(d.last_seen_at)}`;
 }
 
-type Editing = { kind: 'edit' | 'revoke'; device: KioskDevice };
+type Editing = { kind: 'edit' | 'revoke' | 'delete'; device: KioskDevice };
 
 /** Admin > Kiosks (S21.F2). Access is enforced by the backend; AdminLayout only hides it. */
 export function KiosksPage() {
@@ -76,20 +76,27 @@ export function KiosksPage() {
     setDialog({ kind: 'revoke', device });
   }
 
+  function openDelete(device: KioskDevice) {
+    setDialogError(null);
+    setDialog({ kind: 'delete', device });
+  }
+
   async function submit() {
     if (!dialog) return;
     setBusy(true);
     const res =
       dialog.kind === 'edit'
         ? await api.adminUpdateKiosk(dialog.device.id, name.trim(), override || null)
-        : await api.adminRevokeKiosk(dialog.device.id);
+        : dialog.kind === 'revoke'
+          ? await api.adminRevokeKiosk(dialog.device.id)
+          : await api.adminDeleteKiosk(dialog.device.id);
     setBusy(false);
     if (!res.ok) {
       setDialogError(messageFor(res.error));
       return;
     }
     setDialog(null);
-    setNotice(dialog.kind === 'edit' ? 'Kiosk saved.' : 'Kiosk revoked.');
+    setNotice(dialog.kind === 'edit' ? 'Kiosk saved.' : dialog.kind === 'revoke' ? 'Kiosk revoked.' : `${dialog.device.name} deleted.`);
     await load();
   }
 
@@ -134,7 +141,11 @@ export function KiosksPage() {
               {d.last_ip ? ` · IP ${d.last_ip}` : ''}
               {d.ip_changed ? <span className="badge"> IP changed</span> : null}
             </p>
-            {d.revoked_at ? null : (
+            {d.revoked_at ? (
+              <div className="row">
+                <button type="button" className="danger" aria-label={`Delete ${d.name}`} onClick={() => openDelete(d)}>Delete</button>
+              </div>
+            ) : (
               <div className="row">
                 <Link className="button primary" to={`/admin/kiosks/${d.id}/remote`} aria-label={`Remote ${d.name}`}>Remote</Link>
                 <button type="button" aria-label={`Edit ${d.name}`} onClick={() => openEdit(d)}>Rename / cohort</button>
@@ -164,8 +175,14 @@ export function KiosksPage() {
       {dialog?.kind === 'revoke' ? (
         <Dialog title="Revoke kiosk?" submitLabel="Revoke" onCancel={() => setDialog(null)} onSubmit={() => void submit()} busy={busy} error={dialogError}>
           <p>
-            {dialog.device.name} will go back to the pairing screen straight away. You can pair it again later.
+            {dialog.device.name} stops working at once. The screen goes back to the pairing screen at its next check
+            (within 15 minutes, or straight away if someone taps Refresh). You can pair it again later.
           </p>
+        </Dialog>
+      ) : null}
+      {dialog?.kind === 'delete' ? (
+        <Dialog title="Delete kiosk?" submitLabel="Delete" onCancel={() => setDialog(null)} onSubmit={() => void submit()} busy={busy} error={dialogError}>
+          <p>{dialog.device.name} is removed from this list for good. The audit log keeps a record.</p>
         </Dialog>
       ) : null}
     </section>

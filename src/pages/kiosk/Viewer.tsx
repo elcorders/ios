@@ -8,7 +8,10 @@ import { useKioskTo, zoomStyle } from './Board';
 
 type State = { step: 'loading' } | { step: 'missing' } | { step: 'error' } | { step: 'ready'; item: ContentItem };
 
-/** Full-screen content with a big Back button (sandboxed like the student viewer). */
+/**
+ * Full-screen content with a big Back button (sandboxed like the student viewer). S21.F5: **Fill** hides the top bar
+ * so the page fills the screen, leaving a small top-left notch with Back only (reset for each item).
+ */
 interface Props {
   id: string;
   feed: KioskFeed | null;
@@ -22,6 +25,7 @@ interface Props {
 export function Viewer({ id, feed, online, zoom = 1, frameRef, onBridge }: Props) {
   const to = useKioskTo();
   const [state, setState] = useState<State>({ step: 'loading' });
+  const [fill, setFill] = useState(false);
   useEffect(() => {
     let live = true;
     api.kioskGetContent(id).then((r) => {
@@ -36,14 +40,23 @@ export function Viewer({ id, feed, online, zoom = 1, frameRef, onBridge }: Props
 
   const title = state.step === 'ready' ? state.item.title : 'Content';
   return (
-    <main className="kiosk kiosk-viewer">
-      <div className="viewer-bar">
-        <Link className="kiosk-back" to={to('/kiosk')}>← Back</Link>
-        <h1>{title}</h1>
-        <span className="kiosk-spacer" />
-        <span className="kiosk-device">{feed?.device.name ?? ''}</span>
-        <span className={`kiosk-conn ${online ? 'on' : 'off'}`} role="status"><span className="dot" aria-hidden="true" />{online ? 'Connected' : 'Offline'}</span>
-      </div>
+    <main className={`kiosk kiosk-viewer${fill ? ' filled' : ''}`}>
+      {fill ? (
+        <nav className="viewer-notch" aria-label="Back">
+          <Link className="kiosk-back" to={to('/kiosk')}>← Back</Link>
+        </nav>
+      ) : (
+        <div className="viewer-bar">
+          <Link className="kiosk-back" to={to('/kiosk')}>← Back</Link>
+          <h1>{title}</h1>
+          <span className="kiosk-spacer" />
+          <span className="kiosk-device">{feed?.device.name ?? ''}</span>
+          <span className={`kiosk-conn ${online ? 'on' : 'off'}`} role="status"><span className="dot" aria-hidden="true" />{online ? 'Connected' : 'Offline'}</span>
+          {state.step === 'ready' ? (
+            <button type="button" className="kiosk-refresh" onClick={() => setFill(true)}>⤢ Fill screen</button>
+          ) : null}
+        </div>
+      )}
       {state.step === 'loading' ? <p role="status" className="kiosk-big muted kiosk-empty">Loading…</p> : null}
       {state.step === 'missing' ? <p className="kiosk-big kiosk-empty">This item is not available yet.</p> : null}
       {state.step === 'error' ? <p role="alert" className="kiosk-big kiosk-empty">Could not load this page. Try again in a moment.</p> : null}

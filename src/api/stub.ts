@@ -42,7 +42,7 @@ const S1_METHODS = [
   'adminPushLog', 'adminClosureImpact',
   // S21
   'kioskPairStart', 'kioskPairStatus', 'kioskSignIn', 'kioskSignOut', 'kioskHeartbeat', 'kioskFeed', 'kioskGetContent',
-  'kioskPairLookup', 'kioskPairApprove', 'adminListKiosks', 'adminUpdateKiosk', 'adminRevokeKiosk', 'adminSetKioskCohort',
+  'kioskPairLookup', 'kioskPairApprove', 'adminListKiosks', 'adminUpdateKiosk', 'adminRevokeKiosk', 'adminDeleteKiosk', 'adminSetKioskCohort',
   // S23
   'kioskControlStart', 'kioskControlHeartbeat', 'kioskControlEnd', 'kioskControlState', 'kioskCurrentControl', 'kioskRemoteChannel',
 ] as const satisfies readonly (keyof SliceApi)[];

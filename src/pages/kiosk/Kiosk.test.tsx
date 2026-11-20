@@ -210,6 +210,18 @@ describe('kiosk viewer', () => {
     expect(await screen.findByRole('article', { name: 'In class now' })).toBeInTheDocument();
   });
 
+  it('Fill screen hides the top bar and leaves a Back notch that returns to the board (S21.F5)', async () => {
+    open('/kiosk/c/content-t1?demo=class');
+    fireEvent.click(await screen.findByRole('button', { name: /Fill screen/ }));
+    expect(screen.queryByRole('heading', { name: 'Tutorial 1 — Demo game' })).not.toBeInTheDocument();
+    expect(screen.getByTitle('Tutorial 1 — Demo game')).toBeInTheDocument();
+    const notch = screen.getByRole('navigation', { name: 'Back' });
+    const back = within(notch).getByRole('link', { name: /Back/ });
+    expect(within(notch).getAllByRole('link')).toHaveLength(1);
+    fireEvent.click(back);
+    expect(await screen.findByRole('article', { name: 'In class now' })).toBeInTheDocument();
+  });
+
   it('says so when an item is not available', async () => {
     open('/kiosk/c/content-m1');
     expect(await screen.findByText('This item is not available yet.')).toBeInTheDocument();

@@ -1041,6 +1041,8 @@ export interface S21Api {
   adminListKiosks(): Promise<Result<{ current_cohort_id: Uuid | null; devices: KioskDevice[] }>>;
   adminUpdateKiosk(id: Uuid, name: string, cohortId: Uuid | null): Promise<Result<KioskDevice>>;
   adminRevokeKiosk(id: Uuid): Promise<Result<KioskDevice>>;
+  /** S21.B4: revoked devices only (`conflict` otherwise). */
+  adminDeleteKiosk(id: Uuid): Promise<Result<{ ok: true }>>;
   adminSetKioskCohort(cohortId: Uuid | null): Promise<Result<{ current_cohort_id: Uuid | null }>>;
 }
 

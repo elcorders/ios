@@ -335,6 +335,15 @@ export const mockKiosk: S21Api = {
     return ok({ ...d });
   },
 
+  async adminDeleteKiosk(id) {
+    if (!isAdmin()) return fail('forbidden');
+    const i = devices.findIndex((x) => x.id === id);
+    if (i < 0) return fail('not_found');
+    if (!devices[i]!.revoked_at) return fail('conflict');
+    devices.splice(i, 1);
+    return ok({ ok: true as const });
+  },
+
   async adminSetKioskCohort(cohortId) {
     if (!isAdmin()) return fail('forbidden');
     if (cohortId === MOCK_ARCHIVED_COHORT.id) return fail('cohort_archived');

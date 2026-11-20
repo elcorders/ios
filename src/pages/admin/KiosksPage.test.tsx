@@ -64,6 +64,18 @@ describe('Admin > Kiosks', () => {
     expect(screen.getByText(/^Revoked /)).toBeInTheDocument();
   });
 
+  it('deletes a revoked kiosk after confirming; live kiosks have no Delete', async () => {
+    open();
+    expect(await screen.findByRole('button', { name: 'Revoke Staff room PC' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete Staff room PC' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke Staff room PC' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Revoke' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete Staff room PC' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByText('Staff room PC deleted.')).toBeInTheDocument();
+    expect(screen.queryByText('Staff room PC')).not.toBeInTheDocument();
+  });
+
   it('sets the current cohort', async () => {
     open();
     const sel = await screen.findByLabelText('Current cohort');

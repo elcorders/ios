@@ -21,7 +21,7 @@ async function cleanKiosks(): Promise<void> {
 test.beforeAll(cleanKiosks);
 test.afterAll(cleanKiosks);
 
-test('kiosk: pair from the admin phone, board, reload keeps the key, admin sees Online, revoke returns to pairing', async ({ browser }) => {
+test('kiosk: pair from the admin phone, board, reload keeps the key, admin sees Online, revoke returns to pairing, delete', async ({ browser }) => {
   test.setTimeout(240_000);
   const admin = await createUser(120, { admin: true, enrol: false });
   void admin;
@@ -68,6 +68,17 @@ test('kiosk: pair from the admin phone, board, reload keeps the key, admin sees 
   await expect(phone.locator('li.kiosk-item', { hasText: NAME }).getByText(/^Revoked/)).toBeVisible();
   await kiosk.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(kiosk.getByRole('heading', { name: 'Activate this screen' })).toBeVisible({ timeout: 30_000 });
+
+  // Delete the revoked screen (S21.B4): gone from the list, its device row and auth user removed.
+  const { data: before } = await serviceClient().from('kiosk_devices').select('user_id').eq('name', NAME).single();
+  await phone.locator('li.kiosk-item', { hasText: NAME }).getByRole('button', { name: `Delete ${NAME}` }).click();
+  await phone.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+  await expect(phone.getByText(`${NAME} deleted.`)).toBeVisible();
+  await expect(phone.locator('li.kiosk-item', { hasText: NAME })).toHaveCount(0);
+  const { count } = await serviceClient().from('kiosk_devices').select('id', { count: 'exact', head: true }).eq('name', NAME);
+  expect(count).toBe(0);
+  const uid = (before as { user_id: string | null }).user_id;
+  if (uid) expect((await serviceClient().auth.admin.getUserById(uid)).data.user).toBeNull();
 
   await kCtx.close();
   await aCtx.close();

@@ -125,5 +125,6 @@ export const kioskMethods: S21Api = {
   adminListKiosks: () => callRpc('admin_list_kiosks'),
   adminUpdateKiosk: (id, name, cohortId) => callRpc('admin_update_kiosk', { p_id: id, p_name: name, p_cohort_id: cohortId }),
   adminRevokeKiosk: (id) => callRpc('admin_revoke_kiosk', { p_id: id }),
+  adminDeleteKiosk: (id) => callRpc('admin_delete_kiosk', { p_id: id }),
   adminSetKioskCohort: (cohortId) => callRpc('admin_set_kiosk_cohort', { p_cohort_id: cohortId }),
 };
