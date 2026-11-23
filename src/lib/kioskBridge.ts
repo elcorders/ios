@@ -57,30 +57,94 @@ export function bridgeMain(win: Window): void {
       return null;
     }
   }
-  const maxScroll = () => Math.max(0, (doc.scrollingElement || doc.documentElement).scrollHeight - win.innerHeight);
+  // The page's main scroller: the document, or (for pages that scroll inside a box, e.g.
+  // `main { height: 100vh; overflow: auto }`) the largest scrollable element.
+  const docEl = (): Element => doc.scrollingElement || doc.documentElement;
+  const canScroll = (el: Element) => el.scrollHeight - el.clientHeight > 1;
+  let boxCache: Element | null = null;
+  function scroller(): Element {
+    if (docEl().scrollHeight - win.innerHeight > 1) return docEl();
+    if (boxCache && boxCache.isConnected && canScroll(boxCache)) return boxCache;
+    boxCache = null;
+    let best = 0;
+    const all = doc.body ? doc.body.getElementsByTagName('*') : [];
+    for (let i = 0; i < all.length; i++) {
+      const el = all[i];
+      if (!el || !canScroll(el)) continue;
+      const oy = win.getComputedStyle(el).overflowY;
+      if (oy !== 'auto' && oy !== 'scroll') continue;
+      const r = el.getBoundingClientRect();
+      const area = r.width * r.height;
+      if (area > best) {
+        best = area;
+        boxCache = el;
+      }
+    }
+    return boxCache || docEl();
+  }
+  const isDoc = (el: Element) => el === docEl();
+  const viewTop = (el: Element) => (isDoc(el) ? 0 : el.getBoundingClientRect().top);
+  const scrollTopOf = (el: Element) => (isDoc(el) ? win.scrollY : el.scrollTop);
+  const maxOf = (el: Element) => Math.max(0, isDoc(el) ? el.scrollHeight - win.innerHeight : el.scrollHeight - el.clientHeight);
+  function scrollToY(el: Element, y: number) {
+    const top = Math.max(0, Math.round(y));
+    if (isDoc(el)) win.scrollTo(0, top);
+    else el.scrollTop = top;
+  }
+  // Sticky / fixed bars stay at the top whatever the scroll, so they are never an anchor.
+  function pinned(el: Element | null): boolean {
+    while (el && el !== doc.body && el !== doc.documentElement) {
+      const p = win.getComputedStyle(el).position;
+      if (p === 'fixed' || p === 'sticky') return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
 
   function scrollState(): Record<string, unknown> {
-    const max = maxScroll();
-    const fraction = max > 0 ? clamp(win.scrollY / max) : 0;
+    const sc = scroller();
+    const max = maxOf(sc);
+    const fraction = max > 0 ? clamp(scrollTopOf(sc) / max) : 0;
     let anchor: string | null = null;
     let offset = 0;
-    let el = doc.elementFromPoint ? doc.elementFromPoint(win.innerWidth / 2, 2) : null;
-    while (el && el !== doc.body && el !== doc.documentElement) {
-      const r = el.getBoundingClientRect();
-      if (r.height >= 1 && r.top <= 2) {
-        anchor = cssPath(el);
-        offset = clamp(-r.top / r.height);
-        break;
+    const top = viewTop(sc) + 2;
+    const sr = isDoc(sc) ? null : sc.getBoundingClientRect();
+    const x = sr ? sr.left + sr.width / 2 : win.innerWidth / 2;
+    // Probe just below the top edge; a gap between blocks (margins) moves the probe a little lower,
+    // and the block found there is the anchor with offset 0 (off by at most the gap).
+    const steps = [0, 8, 16, 32, 48, 64];
+    for (let s = 0; s < steps.length && anchor === null; s++) {
+      const y = top + (steps[s] ?? 0);
+      const stack = doc.elementsFromPoint ? doc.elementsFromPoint(x, y) : [];
+      let el: Element | null = null;
+      for (let i = 0; i < stack.length; i++) {
+        const c = stack[i];
+        if (c && c !== sc && c !== doc.body && sc.contains(c) && !pinned(c)) {
+          el = c;
+          break;
+        }
       }
-      el = el.parentElement;
+      while (el && el !== sc && el !== doc.body && el !== doc.documentElement) {
+        const r = el.getBoundingClientRect();
+        if (r.height >= 1 && r.top <= y) {
+          anchor = cssPath(el);
+          offset = clamp((top - 2 - r.top) / r.height);
+          break;
+        }
+        el = el.parentElement;
+      }
     }
     return { anchor, offset, fraction };
   }
 
   let lastScroll = 0;
   let scrollTimer: number | undefined;
-  win.addEventListener('scroll', () => {
+  // Capture on the document catches the document's own scroll and an inner box's scroll.
+  doc.addEventListener('scroll', (e) => {
     if (Date.now() < suppressScrollUntil) return;
+    const t = e.target;
+    const sc = scroller();
+    if (!(t === doc ? isDoc(sc) : t === sc)) return; // a small inner box (code sample, table) is not the page
     const send = () => {
       lastScroll = Date.now();
       const m = scrollState();
@@ -95,7 +159,7 @@ export function bridgeMain(win: Window): void {
         send();
       }, wait);
     }
-  }, { passive: true });
+  }, { capture: true, passive: true });
 
   doc.addEventListener('click', (e) => {
     if (replaying || !e.isTrusted) return;
@@ -144,14 +208,15 @@ export function bridgeMain(win: Window): void {
     const op = d['op'];
     if (op === 'scroll') {
       if (!unit(d['offset']) || !unit(d['fraction'])) return;
-      let y = (d['fraction'] as number) * maxScroll();
+      const sc = scroller();
+      let y = (d['fraction'] as number) * maxOf(sc);
       const a = okPath(d['anchor']) ? find(d['anchor']) : null;
-      if (a) {
+      if (a && sc.contains(a) && !pinned(a)) {
         const r = a.getBoundingClientRect();
-        y = win.scrollY + r.top + (d['offset'] as number) * r.height;
+        y = scrollTopOf(sc) + (r.top - viewTop(sc)) + (d['offset'] as number) * r.height;
       }
       suppressScrollUntil = Date.now() + 400;
-      win.scrollTo(0, Math.max(0, Math.round(y)));
+      scrollToY(sc, y);
     } else if (op === 'click') {
       if (!okPath(d['path'])) return;
       const el = find(d['path']) as HTMLElement | null;

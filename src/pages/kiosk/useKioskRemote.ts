@@ -20,9 +20,26 @@ export function menuOf(feed: KioskFeed | null): KioskMenuItem[] {
   return [...tutorials, ...materials, ...resources].map(({ id, kind, title }) => ({ id, kind, title }));
 }
 
+/**
+ * The board scrolls inside `.kiosk-main` on a big screen (the board is one screen high) and the whole
+ * window on a small one; use whichever actually scrolls.
+ */
+function boardScroller(): { el: HTMLElement | null; top: number; max: number } {
+  const main = document.querySelector<HTMLElement>('.kiosk-board .kiosk-main');
+  if (main && main.scrollHeight - main.clientHeight > 1) return { el: main, top: main.scrollTop, max: main.scrollHeight - main.clientHeight };
+  return { el: null, top: window.scrollY, max: Math.max(0, document.documentElement.scrollHeight - window.innerHeight) };
+}
+
 function windowScroll(): KioskScroll {
-  const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-  return { anchor: null, offset: 0, fraction: max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0 };
+  const { top, max } = boardScroller();
+  return { anchor: null, offset: 0, fraction: max > 0 ? Math.min(1, Math.max(0, top / max)) : 0 };
+}
+
+function scrollBoard(fraction: number): void {
+  const { el, max } = boardScroller();
+  const y = Math.round(fraction * max);
+  if (el) el.scrollTop = y;
+  else window.scrollTo(0, y);
 }
 
 /**
@@ -147,10 +164,7 @@ export function useKioskRemote({ deviceId, ready, itemId, feed }: { deviceId: st
       default:
         if (!isBridgeCommand(cmd)) return;
         if (!l.itemId) {
-          if (cmd.type === 'scroll') {
-            const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-            window.scrollTo(0, Math.round(cmd.fraction * max));
-          }
+          if (cmd.type === 'scroll') scrollBoard(cmd.fraction);
         } else if (l.frameReady) {
           sendToBridge(frameRef.current, cmd);
           if (cmd.type === 'scroll') l.scroll = { anchor: cmd.anchor, offset: cmd.offset, fraction: cmd.fraction };
@@ -218,8 +232,9 @@ export function useKioskRemote({ deviceId, ready, itemId, feed }: { deviceId: st
   useEffect(() => {
     if (!lease) return;
     const onScroll = () => sendState();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    // Capture: the board's own box scrolls too (scroll events do not bubble). Content frames report via the bridge.
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener('scroll', onScroll, { capture: true });
   }, [lease, sendState]);
   useEffect(() => {
     if (lease) sendStateNow(false);
