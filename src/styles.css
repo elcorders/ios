@@ -369,21 +369,24 @@ details { border: 1px solid var(--border); border-radius: var(--radius); backgro
 details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 details[open] > summary { margin-bottom: 0.75rem; color: var(--text); }
 
+/* Auto margins (not align-items) place the dialog: a dialog taller than the screen then
+   overflows downward and the backdrop scrolls, instead of being cut off above the top. */
 .dialog-backdrop {
-  position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center;
-  padding: 0; overflow-y: auto; background: rgba(0, 0, 0, 0.55);
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center;
+  padding: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   animation: fade 0.15s ease-out;
 }
 .dialog {
-  width: 100%; max-width: 30rem; border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 30rem; border-radius: 20px 20px 0 0; margin-top: auto; flex-shrink: 0;
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   animation: rise 0.2s ease-out;
 }
 .dialog .row { justify-content: flex-end; }
 @media (min-width: 640px) {
-  .dialog-backdrop { align-items: center; padding: 1rem; }
-  .dialog { border-radius: var(--radius); padding-bottom: 1.75rem; }
+  .dialog-backdrop { padding: 1rem; }
+  .dialog { border-radius: var(--radius); padding-bottom: 1.75rem; margin: auto 0; }
 }
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(1rem); opacity: 0; } }
