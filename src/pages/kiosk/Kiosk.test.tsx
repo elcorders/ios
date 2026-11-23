@@ -227,3 +227,47 @@ describe('kiosk viewer', () => {
     expect(await screen.findByText('This item is not available yet.')).toBeInTheDocument();
   });
 });
+
+describe('S21.F6 kiosk mode', () => {
+  beforeEach(() => localStorage.removeItem('nibm-kiosk-mode'));
+
+  it('turns on once the board is showing, and the logo gesture exits to the site', async () => {
+    paired();
+    open('/kiosk');
+    expect(await screen.findByRole('region', { name: 'Class and lab' })).toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem('nibm-kiosk-mode')).toBe('on'));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const logo = screen.getByText('NIBM iOS');
+    for (let i = 0; i < 5; i++) fireEvent.click(logo);
+    expect(confirm).not.toHaveBeenCalled();
+    fireEvent.click(logo);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('nibm-kiosk-mode')).toBeNull();
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('stays in kiosk mode when the exit is cancelled', async () => {
+    paired();
+    open('/kiosk');
+    expect(await screen.findByRole('region', { name: 'Class and lab' })).toBeInTheDocument();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const logo = screen.getByText('NIBM iOS');
+    for (let i = 0; i < 6; i++) fireEvent.click(logo);
+    expect(localStorage.getItem('nibm-kiosk-mode')).toBe('on');
+    expect(screen.getByRole('region', { name: 'Class and lab' })).toBeInTheDocument();
+  });
+
+  it('start-up sends a kiosk browser to the kiosk, but not the kiosk pages or other browsers', async () => {
+    const { kioskBootRedirect } = await import('../../lib/kioskMode');
+    const loc = (hash: string) => ({ hash, pathname: '/', search: '', replace: vi.fn() });
+    const off = loc('#/login');
+    expect(kioskBootRedirect(off)).toBe(false);
+    localStorage.setItem('nibm-kiosk-mode', 'on');
+    for (const h of ['', '#/', '#/login', '#/kiosk/pair?c=X']) {
+      const l = loc(h);
+      expect(kioskBootRedirect(l)).toBe(true);
+      expect(l.replace).toHaveBeenCalledWith('/#/kiosk');
+    }
+    for (const h of ['#/kiosk', '#/kiosk?demo=lab', '#/kiosk/c/abc']) expect(kioskBootRedirect(loc(h))).toBe(false);
+  });
+});

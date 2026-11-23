@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { INSECURE_MESSAGE } from '../../lib/kioskKey';
+import { setKioskMode } from '../../lib/kioskMode';
 import { Board } from './Board';
 import { PairingScreen } from './PairingScreen';
 import { Viewer } from './Viewer';
@@ -15,6 +16,10 @@ export function Kiosk() {
   const remote = useKioskRemote({ deviceId: k.record?.device_id ?? null, ready: k.phase === 'ready', itemId: id ?? null, feed: k.feed });
   // `?reset=1` (mock demo only) is applied once by useKiosk; drop it so links and reloads do not repeat it.
   const [params, setParams] = useSearchParams();
+  // S21.F6: once paired, this browser opens straight on the kiosk (main.tsx) until exited from the logo.
+  useEffect(() => {
+    if (k.phase === 'ready') setKioskMode(true);
+  }, [k.phase]);
   useEffect(() => {
     if (!params.has('reset')) return;
     const next = new URLSearchParams(params);
