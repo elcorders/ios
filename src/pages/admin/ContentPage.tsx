@@ -205,7 +205,9 @@ function ContentSection({ kind, cohort, cohorts, readOnly }: SectionProps) {
                                   : void act(() => api.adminSetContentPublish(r.id, publishNowIso()), `Published “${r.title}”.`)}
                             >Publish now</button>
                           ) : null}
-                          <button type="button" aria-label={`Schedule ${r.title}`} onClick={() => setDlg({ type: 'schedule', row: r })}>Schedule…</button>
+                          {r.kind !== 'tutorial' ? (
+                            <button type="button" aria-label={`Schedule ${r.title}`} onClick={() => setDlg({ type: 'schedule', row: r })}>Schedule…</button>
+                          ) : null}
                           {r.published_at ? (
                             <button
                               type="button"

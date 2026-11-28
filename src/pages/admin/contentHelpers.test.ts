@@ -26,9 +26,12 @@ describe('hasFrameNavigation', () => {
 });
 
 describe('statusLabel', () => {
-  it('formats on_session with the next session in Colombo time', () => {
+  it('formats on_session with the open groups and the next slot in Colombo time', () => {
     // 03:30 UTC = 09:00 in Colombo.
-    expect(statusLabel({ status: 'on_session', published_at: null, release_at: '2026-11-13T03:30:00Z' })).toBe('On session · next 13 Nov 09:00');
+    expect(statusLabel({ status: 'on_session', published_at: null, release_at: '2026-11-13T03:30:00Z', released_group_nos: [1, 2] })).toBe('Via classes · open for G1, G2 · next 13 Nov 09:00');
+    expect(statusLabel({ status: 'on_session', published_at: null, release_at: '2026-11-13T03:30:00Z' })).toBe('Via classes · next 13 Nov 09:00');
+    expect(statusLabel({ status: 'on_session', published_at: null, released_group_nos: [3] })).toBe('Via classes · open for G3');
+    expect(statusLabel({ status: 'on_session', published_at: null })).toBe('Via classes');
   });
   it('keeps the old labels', () => {
     expect(statusLabel({ status: 'draft', published_at: null })).toBe('Draft');

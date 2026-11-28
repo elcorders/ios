@@ -1,6 +1,6 @@
 import type { AdminContentRow } from '../../api/types';
 import { formatColombo } from '../../lib/time';
-import { messageFor } from '../../lib/errors';
+import { hintOf, messageFor } from '../../lib/errors';
 
 export const MAX_HTML_BYTES = 2 * 1024 * 1024;
 
@@ -33,9 +33,17 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-export function statusLabel(row: Pick<AdminContentRow, 'status' | 'published_at'> & { release_at?: string | null }): string {
+export function statusLabel(
+  row: Pick<AdminContentRow, 'status' | 'published_at'> & { release_at?: string | null; released_group_nos?: number[] },
+): string {
   if (row.status === 'on_session') {
-    return row.release_at ? `On session · next ${formatColombo(row.release_at, { day: '2-digit', month: 'short' })} ${formatColombo(row.release_at, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}` : 'On session';
+    const parts = ['Via classes'];
+    const open = row.released_group_nos ?? [];
+    if (open.length > 0) parts.push(`open for ${open.map((g) => `G${g}`).join(', ')}`);
+    if (row.release_at) {
+      parts.push(`next ${formatColombo(row.release_at, { day: '2-digit', month: 'short' })} ${formatColombo(row.release_at, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`);
+    }
+    return parts.join(' · ');
   }
   if (row.status === 'published' && !row.published_at) return 'Published (by session)';
   if (row.status === 'draft' || !row.published_at) return 'Draft';
@@ -48,7 +56,10 @@ const SPECIFIC: Record<string, string> = {
   invalid_input: 'Check the title, summary, order and file (HTML only, max 2 MB).',
 };
 
-export function contentError(error: { code: string }): string {
+export function contentError(error: { code: string; details?: unknown }): string {
+  if (error.code === 'invalid_input' && hintOf(error) === 'tutorial_schedule') {
+    return 'Tutorials cannot be scheduled. They open through a class, or use Publish now.';
+  }
   return SPECIFIC[error.code] ?? messageFor(error);
 }
 

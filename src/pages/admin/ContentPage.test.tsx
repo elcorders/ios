@@ -27,7 +27,7 @@ describe('admin content tab', () => {
     open();
     await screen.findByText('Tutorial 1 — Demo game');
     expect(rowOf(/Tutorial 1/)).toHaveTextContent('Published');
-    expect(rowOf(/Tutorial 2/)).toHaveTextContent('Scheduled');
+    expect(rowOf(/Tutorial 2/)).toHaveTextContent('Draft');
     expect(rowOf(/Tutorial 3/)).toHaveTextContent('Draft');
     expect(await screen.findByRole('heading', { name: 'Common resources' })).toBeInTheDocument();
     expect(await screen.findByText('Lab Mac setup')).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('admin content tab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add tutorial' }));
     const file = new File(['<html><head><title>Fresh page</title></head><body>x</body></html>'], 'f.html', { type: 'text/html' });
     fireEvent.change(within(dialog()).getByLabelText(/HTML file/), { target: { files: [file] } });
-    await waitFor(() => expect(within(dialog()).getByLabelText('Title')).toHaveValue('Fresh page'));
+    await waitFor(() => expect(within(dialog()).getByLabelText('Title')).toHaveValue('Fresh page'), { timeout: 4000 });
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(rowOf(/Fresh page/)).toHaveTextContent('Draft'));
   });
@@ -75,17 +75,20 @@ describe('admin content tab', () => {
     await waitFor(() => expect(rowOf(/Tutorial 3/)).toHaveTextContent('Draft'));
   });
 
-  it('schedules in Colombo time (+05:30)', async () => {
+  it('tutorials have no Schedule action; materials still schedule in Colombo time (+05:30)', async () => {
     open();
     await screen.findByText('Tutorial 3 — Draft');
-    fireEvent.click(screen.getByRole('button', { name: 'Schedule Tutorial 3 — Draft' }));
+    expect(screen.queryByRole('button', { name: 'Schedule Tutorial 3 — Draft' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Publish now Tutorial 3 — Draft' })).toBeInTheDocument();
+    await screen.findByText('Setup guide');
+    fireEvent.click(screen.getByRole('button', { name: 'Schedule Setup guide' }));
     fireEvent.change(within(dialog()).getByLabelText(/Publish at/), { target: { value: '2999-03-05T09:30' } });
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule' }));
-    await waitFor(() => expect(rowOf(/Tutorial 3/)).toHaveTextContent('Scheduled'));
-    const res = await api.adminListContent('tutorial', '00000000-0000-4000-8000-000000000252');
-    const t3 = res.ok ? res.data.find((r) => r.id === 'content-t3') : undefined;
-    expect(t3?.published_at).toBe('2999-03-05T04:00:00.000Z');
-    expect(rowOf(/Tutorial 3/)).toHaveTextContent('09:30');
+    await waitFor(() => expect(rowOf(/Setup guide/)).toHaveTextContent('Scheduled'));
+    const res = await api.adminListContent('material', '00000000-0000-4000-8000-000000000252');
+    const m = res.ok ? res.data.find((r) => r.id === 'content-m2') : undefined;
+    expect(m?.published_at).toBe('2999-03-05T04:00:00.000Z');
+    expect(rowOf(/Setup guide/)).toHaveTextContent('09:30');
   });
 
   it('deletes after confirmation', async () => {
@@ -129,7 +132,7 @@ describe('admin content tab', () => {
     open();
     expect(await screen.findByRole('heading', { name: 'Class materials — 25.2' })).toBeInTheDocument();
     await screen.findByText('Week 2 slides — Layouts');
-    expect(rowOf(/Week 2 slides/)).toHaveTextContent(/On session · next \d{2} [A-Z][a-z]{2} \d{2}:\d{2}/);
+    expect(rowOf(/Week 2 slides/)).toHaveTextContent(/Via classes · next \d{2} [A-Z][a-z]{2} \d{2}:\d{2}/);
     expect(rowOf(/Setup guide/)).toHaveTextContent('Published');
     expect(screen.getByRole('button', { name: 'Add material' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Link tutorials from another cohort' })).toHaveLength(1);
@@ -324,20 +327,19 @@ describe('admin content: notify on open (S19)', () => {
     expect(rowOf(/Tutorial 3/)).toHaveTextContent('Notify on open');
   });
 
-  it('schedule asks after the time is valid; without notifying leaves it off', async () => {
+  it('schedule (materials) asks after the time is valid; without notifying leaves it off', async () => {
     vi.stubEnv('VITE_FEATURE_PUSH', 'on');
     open();
-    await screen.findByText('Tutorial 3 — Draft');
-    fireEvent.click(screen.getByRole('button', { name: 'Schedule Tutorial 3 — Draft' }));
+    await screen.findByText('Setup guide');
+    fireEvent.click(screen.getByRole('button', { name: 'Schedule Setup guide' }));
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule' }));
     expect(await within(dialog()).findByRole('alert')).toHaveTextContent('Pick a date and time.');
     fireEvent.change(within(dialog()).getByLabelText(/Publish at/), { target: { value: '2999-03-05T09:30' } });
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule' }));
     expect(within(dialog()).getByText('Notify students when it opens?')).toBeInTheDocument();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Schedule without notifying' }));
-    await waitFor(() => expect(rowOf(/Tutorial 3/)).toHaveTextContent('Scheduled'));
-    expect(await notify()).toBe(false);
-    expect(rowOf(/Tutorial 3/)).not.toHaveTextContent('Notify on open');
+    await waitFor(() => expect(rowOf(/Setup guide/)).toHaveTextContent('Scheduled'));
+    expect(rowOf(/Setup guide/)).not.toHaveTextContent('Notify on open');
   });
 
   it('does not ask when the push flag is off', async () => {

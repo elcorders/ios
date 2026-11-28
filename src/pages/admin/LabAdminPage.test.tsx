@@ -166,7 +166,7 @@ describe('Admin > Lab > Calendar', () => {
     const day = addDaysIso(t, 1);
     setSessionRows([{
       id: 's-cal', cohort_id: MOCK_COHORT.id, date: t, title: 'Fictional class',
-      slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [], lab_block_until: '16:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+      slots: [{ label: null, start_time: '09:00', end_time: '12:00', group_nos: [1], content: [] }], deliverables: [], lab_block_until: '16:00', template_id: null, created_at: '2026-11-01T09:00:00+05:30',
     }]);
     await open('/admin/lab/calendar');
     const grid = await screen.findByRole('list', { name: /^Lab calendar / });
@@ -187,7 +187,7 @@ describe('Admin > Lab > Calendar', () => {
     const t = colomboToday();
     setSessionRows([{
       id: 's-cal2', cohort_id: MOCK_COHORT.id, date: t, title: 'Fictional class',
-      slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [], lab_block_until: '24:00', content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+      slots: [{ label: null, start_time: '09:00', end_time: '12:00', group_nos: [1], content: [] }], deliverables: [], lab_block_until: '24:00', template_id: null, created_at: '2026-11-01T09:00:00+05:30',
     }]);
     await open('/admin/lab/calendar');
     const grid = await screen.findByRole('list', { name: /^Lab calendar / });

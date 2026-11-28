@@ -45,6 +45,10 @@ describe('error mapping', () => {
     expect(mapPostgrestError({ code: 'P0001', message: 'forbidden', details: 'No', hint: null })).toEqual({ code: 'forbidden', message: 'No' });
     expect(mapPostgrestError({ code: 'P0001', message: 'forbidden', details: 'No', hint: '{bad' })).toEqual({ code: 'forbidden', message: 'No' });
   });
+  it('keeps a bare hint as details (§S24)', () => {
+    expect(mapPostgrestError({ code: 'P0001', message: 'invalid_input', details: 'No', hint: 'tutorial_schedule' }))
+      .toEqual({ code: 'invalid_input', message: 'No', details: 'tutorial_schedule' });
+  });
   it('maps other database errors to internal without leaking text', () => {
     const e = mapPostgrestError({ code: '23505', message: 'duplicate key secret' });
     expect(e.code).toBe('internal');

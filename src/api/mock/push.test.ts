@@ -4,6 +4,7 @@ import { resetMockAuth } from './auth';
 import { resetMockLab } from './lab';
 import { resetMockPush } from './push';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT } from './fixtures/s1';
+import type { SlotNotify } from '../types';
 
 const C = MOCK_COHORT.id;
 const asAdmin = () => api.verifyEmailCode('admin@example.edu', '123456');
@@ -158,25 +159,30 @@ describe('mock closures', () => {
 });
 
 describe('mock notify flags', () => {
-  it('sets notify via publish and via class sessions', async () => {
+  it('sets notify via publish and per slot via class sessions', async () => {
     await asAdmin();
     const rows = must(await api.adminListContent('tutorial', C));
     const draft = rows.find((r) => r.status === 'draft')!;
     expect(draft.notify_on_release).toBe(false);
-    const on = must(await api.adminSetContentPublish(draft.id, new Date(Date.now() + 86_400_000).toISOString(), true));
+    const on = must(await api.adminSetContentPublish(draft.id, new Date(Date.now() - 60_000).toISOString(), true));
     expect(on.notify_on_release).toBe(true);
     expect(must(await api.adminSetContentPublish(draft.id, null)).notify_on_release).toBe(true);
     expect(must(await api.adminSetContentPublish(draft.id, null, false)).notify_on_release).toBe(false);
 
     const [s] = must(await api.adminListClassSessions(C));
-    const input = {
-      id: s!.id, cohort_id: C, date: s!.date, title: s!.title, slots: s!.slots, deliverables: s!.deliverables,
-      lab_block_until: s!.lab_block_until, content_ids: [draft.id],
+    const base = {
+      id: s!.id, cohort_id: C, date: s!.date, title: s!.title, deliverables: s!.deliverables,
+      lab_block_until: s!.lab_block_until, template_id: null,
     };
-    expect((await api.adminUpsertClassSession({ ...input, notify_content_ids: ['other'] })).ok).toBe(false);
-    const saved = must(await api.adminUpsertClassSession({ ...input, notify_content_ids: [draft.id] }));
-    expect(saved.content.find((c) => c.id === draft.id)?.notify).toBe(true);
-    const again = must(await api.adminUpsertClassSession({ ...input, notify_content_ids: [] }));
-    expect(again.content.find((c) => c.id === draft.id)?.notify).toBe(false);
+    const slots = (notify: SlotNotify) => s!.slots.map((x, i) => ({
+      label: x.label, start_time: x.start_time, end_time: x.end_time, group_nos: x.group_nos,
+      content: i === 0 ? [{ content_id: draft.id, notify, notify_at: null }] : [],
+    }));
+    const saved = must(await api.adminUpsertClassSession({ ...base, slots: slots('slot_end') }));
+    expect(saved.slots[0]!.content.find((c) => c.id === draft.id)?.notify).toBe('slot_end');
+    const again = must(await api.adminUpsertClassSession({ ...base, slots: slots('none') }));
+    expect(again.slots[0]!.content.find((c) => c.id === draft.id)?.notify).toBe('none');
+    // Slot notify never touches the item's manual-publish flag.
+    expect(must(await api.adminListContent('tutorial', C)).find((r) => r.id === draft.id)?.notify_on_release).toBe(false);
   });
 });

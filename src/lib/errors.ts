@@ -31,3 +31,14 @@ const MESSAGES: Record<string, string> = {
 export function messageFor(error: ApiError | { code: string }): string {
   return MESSAGES[error.code] ?? 'Something went wrong. Please try again.';
 }
+
+/** The field a server `invalid_input` points at (`details` is a bare string or `{ field | hint }`), or null. */
+export function hintOf(error: { details?: unknown }): string | null {
+  const d = error.details;
+  if (typeof d === 'string') return d;
+  if (d && typeof d === 'object') {
+    const o = d as Record<string, unknown>;
+    for (const k of ['field', 'hint']) if (typeof o[k] === 'string') return o[k] as string;
+  }
+  return null;
+}

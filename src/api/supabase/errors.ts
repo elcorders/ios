@@ -22,7 +22,8 @@ function parseJson(text: string | null | undefined): unknown {
   try {
     return JSON.parse(text);
   } catch {
-    return undefined;
+    // bare hint, e.g. 'tutorial_schedule' (§S24); broken JSON is dropped
+    return /^[A-Za-z0-9_.[\]-]+$/.test(text) ? text : undefined;
   }
 }
 

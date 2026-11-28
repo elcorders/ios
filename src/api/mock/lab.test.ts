@@ -32,7 +32,7 @@ afterEach(() => {
 
 const session = (date: string, until: string | null): MockSessionRow => ({
   id: `s-${date}-${until}`, cohort_id: C, date, title: 'Fictional class',
-      slots: [{ start_time: '09:00', end_time: '12:00', group_nos: [1] }], deliverables: [], lab_block_until: until, content_ids: [], created_at: '2026-11-01T09:00:00+05:30',
+      slots: [{ label: null, start_time: '09:00', end_time: '12:00', group_nos: [1], content: [] }], deliverables: [], lab_block_until: until, template_id: null, created_at: '2026-11-01T09:00:00+05:30',
 });
 
 describe('mock lab calendar', () => {

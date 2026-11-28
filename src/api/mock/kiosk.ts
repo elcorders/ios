@@ -111,9 +111,9 @@ function linkedContent(ids: string[]): KioskSession['content'] {
 
 function toSession(r: MockSessionRow, now: number): KioskSession {
   return {
-    id: r.id, title: r.title, date: r.date, deliverables: r.deliverables, content: linkedContent(r.content_ids),
+    id: r.id, title: r.title, date: r.date, deliverables: r.deliverables, content: linkedContent([...new Set(r.slots.flatMap((x) => x.content.map((c) => c.content_id)))]),
     slots: r.slots.map((s) => ({
-      ...s, now: colomboAt(r.date, s.start_time) <= now && now < colomboAt(r.date, s.end_time),
+      start_time: s.start_time, end_time: s.end_time, group_nos: s.group_nos, now: colomboAt(r.date, s.start_time) <= now && now < colomboAt(r.date, s.end_time),
     })),
   };
 }

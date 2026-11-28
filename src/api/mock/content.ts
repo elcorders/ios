@@ -5,10 +5,10 @@ import type {
 import { getMockCurrentEmail } from './auth';
 import { MOCK_ARCHIVED_COHORT, MOCK_COHORT, MOCK_USERS, seedEnrolments } from './fixtures/s1';
 import { mockGroupOf } from './survey';
-import { resetMockSessions, sessionRows, type MockSessionRow } from './sessionStore';
+import { resetMockSessions, sessionRows, type MockSessionRow, type MockSlot } from './sessionStore';
 
 const ok = <T>(data: T): Result<T> => ({ ok: true, data });
-const fail = <T>(code: string): Result<T> => ({ ok: false, error: { code, message: code } satisfies ApiError });
+const fail = <T>(code: string, details?: unknown): Result<T> => ({ ok: false, error: { code, message: code, ...(details === undefined ? {} : { details }) } satisfies ApiError });
 
 const COHORTS = [MOCK_COHORT, MOCK_ARCHIVED_COHORT];
 const MAX_BODY = 2 * 1024 * 1024;
@@ -65,7 +65,7 @@ function seedItems(): SeedItem[] {
     { ...base, id: 'content-r1', kind: 'resource', cohort_id: null, title: 'Lab Mac setup', summary: 'Set up Xcode and GitHub on a lab Mac.', position: 1, body_html: page('Lab Mac setup'), published_at: iso(now - 7 * DAY) },
     { ...base, id: 'content-r2', kind: 'resource', cohort_id: null, title: 'Swift cheat sheet', summary: null, position: 2, body_html: page('Swift cheat sheet'), published_at: null },
     { ...base, id: 'content-t1', kind: 'tutorial', cohort_id: MOCK_COHORT.id, title: 'Tutorial 1 — Demo game', summary: 'Build a tap counter.', position: 1, body_html: page('Tutorial 1'), published_at: iso(now - 3 * DAY) },
-    { ...base, id: 'content-t2', kind: 'tutorial', cohort_id: MOCK_COHORT.id, title: 'Tutorial 2 — Scheduled', summary: 'Opens next week.', position: 2, body_html: page('Tutorial 2'), published_at: iso(now + 7 * DAY) },
+    { ...base, id: 'content-t2', kind: 'tutorial', cohort_id: MOCK_COHORT.id, title: 'Tutorial 2 — Layouts', summary: 'Opens in class.', position: 2, body_html: page('Tutorial 2'), published_at: null },
     { ...base, id: 'content-t3', kind: 'tutorial', cohort_id: MOCK_COHORT.id, title: 'Tutorial 3 — Draft', summary: null, position: 3, body_html: page('Tutorial 3'), published_at: null },
     { ...base, id: 'content-m1', kind: 'material', cohort_id: MOCK_COHORT.id, title: 'Week 2 slides — Layouts', summary: 'Slides for the layouts class.', position: 1, body_html: page('Week 2 slides'), published_at: null },
     { ...base, id: 'content-m2', kind: 'material', cohort_id: MOCK_COHORT.id, title: 'Setup guide', summary: null, position: 2, body_html: page('Setup guide'), published_at: iso(now - 5 * DAY) },
@@ -118,7 +118,7 @@ export function resetMockContent(): void {
   ensureFixtureLinks();
 }
 
-/** Fixture link: the "Week 2 slides" material is linked to the first upcoming session. */
+/** Fixture link: the "Week 2 slides" material is on every slot of the first upcoming session (no notification). */
 const FIXTURE_LINKS: [sessionId: string, contentId: string][] = [['00000000-0000-4000-8000-000000001402', 'content-m1']];
 const linkedRows = new WeakSet<MockSessionRow[]>();
 
@@ -129,16 +129,19 @@ export function ensureFixtureLinks(): void {
   linkedRows.add(rows);
   for (const [sid, cid] of FIXTURE_LINKS) {
     const r = rows.find((x) => x.id === sid);
-    if (r && !r.content_ids.includes(cid)) r.content_ids.push(cid);
+    if (!r) continue;
+    for (const sl of r.slots) {
+      if (!sl.content.some((c) => c.content_id === cid)) sl.content.push({ content_id: cid, notify: 'none', notify_at: null, notified: false });
+    }
   }
 }
 
 const at = (r: MockSessionRow, time: string): number => Date.parse(`${r.date}T${time}:00+05:30`);
-/** S18: latest slot start of a session. */
-const lastStart = (r: MockSessionRow): number => Math.max(...r.slots.map((x) => at(r, x.start_time)));
-const linksOf = (id: string): MockSessionRow[] => {
+interface SlotLink { row: MockSessionRow; slot: MockSlot }
+/** §S24: every slot an item is linked to. */
+const slotLinksOf = (id: string): SlotLink[] => {
   ensureFixtureLinks();
-  return sessionRows().filter((r) => r.content_ids.includes(id));
+  return sessionRows().flatMap((row) => row.slots.filter((slot) => slot.content.some((c) => c.content_id === id)).map((slot) => ({ row, slot })));
 };
 
 const currentUser = () => MOCK_USERS.find((u) => u.profile.email === getMockCurrentEmail()) ?? null;
@@ -152,21 +155,28 @@ const linksOfLib = (libId: string) => items.filter((i) => i.library_id === libId
 
 const hasSessions = (i: MockItem) => i.kind !== 'resource';
 
-/** CONTRACT §S14 admin status: published / on_session / scheduled / draft. */
+/** CONTRACT §S24 admin status: published / on_session / scheduled (materials) / draft. */
 function statusOf(i: MockItem): ContentStatus {
-  const now = Date.now();
-  if (i.published_at && Date.parse(i.published_at) <= now) return 'published';
-  const links = hasSessions(i) ? linksOf(i.id) : [];
-  if (links.length > 0) return Math.max(...links.map(lastStart)) <= now ? 'published' : 'on_session';
+  if (i.published_at && Date.parse(i.published_at) <= Date.now()) return 'published';
+  if (hasSessions(i) && slotLinksOf(i.id).length > 0) return 'on_session';
   return i.published_at ? 'scheduled' : 'draft';
 }
 
-/** Earliest linked session slot start still in the future. */
+/** Earliest linked slot start still in the future. */
 function releaseAt(i: MockItem): string | null {
   if (!hasSessions(i)) return null;
   const now = Date.now();
-  const future = linksOf(i.id).flatMap((r) => r.slots.map((x) => at(r, x.start_time))).filter((t) => t > now);
+  const future = slotLinksOf(i.id).map((l) => at(l.row, l.slot.start_time)).filter((t) => t > now);
   return future.length ? iso(Math.min(...future)) : null;
+}
+
+/** Groups whose linked slot has started, ascending. */
+function releasedGroups(i: MockItem): number[] {
+  if (!hasSessions(i)) return [];
+  const now = Date.now();
+  const out = new Set<number>();
+  for (const l of slotLinksOf(i.id)) if (at(l.row, l.slot.start_time) <= now) l.slot.group_nos.forEach((g) => out.add(g));
+  return [...out].sort((a, b) => a - b);
 }
 
 /** Enrolments of the signed-in user (active). */
@@ -175,22 +185,17 @@ const myEnrolments = () => {
   return u ? seedEnrolments().filter((e) => e.user_id === u.profile.id && e.status === 'active') : [];
 };
 
-/** CONTRACT §S14 visible_from for the caller (ms), or null when never. Excludes membership. */
+/** CONTRACT §S24 visible_from for the caller (ms), or null when never. Excludes membership. */
 function visibleFrom(i: MockItem): number | null {
   const times: number[] = [];
   if (i.published_at) times.push(Date.parse(i.published_at));
   if (hasSessions(i)) {
-    const links = linksOf(i.id).filter((r) => r.cohort_id === i.cohort_id);
-    if (links.length) {
-      times.push(Math.max(...links.map(lastStart)));
-      const e = myEnrolments().find((x) => x.cohort_id === i.cohort_id && x.role === 'student');
-      const group = e ? mockGroupOf(e.id).group_no : null;
-      if (group !== null) {
-        for (const r of links) {
-          const own = r.slots.find((x) => x.group_nos.includes(group));
-          if (own) times.push(at(r, own.start_time));
-        }
-      }
+    const links = slotLinksOf(i.id).filter((l) => l.row.cohort_id === i.cohort_id);
+    const e = myEnrolments().find((x) => x.cohort_id === i.cohort_id);
+    const staff = currentUser()?.profile.is_admin === true || e?.role === 'instructor';
+    const group = e?.role === 'student' ? mockGroupOf(e.id).group_no : null;
+    for (const l of links) {
+      if (staff || (group !== null && l.slot.group_nos.includes(group))) times.push(at(l.row, l.slot.start_time));
     }
   }
   return times.length ? Math.min(...times) : null;
@@ -207,9 +212,9 @@ function visible(i: MockItem): boolean {
 }
 
 /** For §S14 session mocks: link info of a content item (admin view). */
-export function mockContentLinkInfo(id: string): { id: string; kind: ContentKind; title: string; status: ContentStatus; notify: boolean } | null {
+export function mockContentLinkInfo(id: string): { id: string; kind: ContentKind; title: string; status: ContentStatus } | null {
   const i = items.find((x) => x.id === id);
-  return i ? { id: i.id, kind: i.kind, title: i.title, status: statusOf(i), notify: i.notify_on_release === true } : null;
+  return i ? { id: i.id, kind: i.kind, title: i.title, status: statusOf(i) } : null;
 }
 /** For §S14 session mocks: kind/cohort of an item. */
 export function mockContentMeta(id: string): { kind: ContentKind; cohort_id: string | null } | null {
@@ -224,7 +229,7 @@ export function mockContentAvailable(id: string): boolean {
 /** S21 kiosk: items visible to the whole cohort (no person, no per-group early release), by position. */
 export function mockKioskItems(cohortId: string): { id: string; kind: ContentKind; title: string; summary: string | null }[] {
   return items
-    .filter((i) => (i.kind === 'resource' ? i.cohort_id === null : i.cohort_id === cohortId) && statusOf(i) === 'published')
+    .filter((i) => (i.kind === 'resource' ? i.cohort_id === null : i.cohort_id === cohortId) && (statusOf(i) === 'published' || releasedGroups(i).length > 0))
     .sort(order)
     .map((i) => ({ id: i.id, kind: i.kind, title: i.title, summary: i.summary }));
 }
@@ -235,24 +240,19 @@ export function mockKioskGetContent(id: string, cohortId: string): ContentItem |
   if (!i || !mockKioskItems(cohortId).some((x) => x.id === id)) return null;
   return {
     id: i.id, kind: i.kind, cohort_code: cohortOf(i.cohort_id)?.code ?? null, title: i.title,
-    summary: i.summary, published_at: iso(visibleFrom(i) ?? Date.now()), body_html: bodyOf(i),
+    summary: i.summary, published_at: iso(Date.now()), body_html: bodyOf(i),
   };
 }
 
-/** S19: set notify_on_release for a linked item. */
-export function mockSetNotify(id: string, notify: boolean): void {
-  const i = items.find((x) => x.id === id);
-  if (i && i.kind !== 'resource') i.notify_on_release = notify;
-}
 /** Drop an item's links (deleting content cascades). */
 function unlink(id: string): void {
-  for (const r of sessionRows()) r.content_ids = r.content_ids.filter((c) => c !== id);
+  for (const r of sessionRows()) for (const sl of r.slots) sl.content = sl.content.filter((c) => c.content_id !== id);
 }
 
 const adminRow = (i: MockItem): AdminContentRow => ({
   id: i.id, kind: i.kind, cohort_id: i.cohort_id, title: i.title, summary: i.summary, position: i.position,
   published_at: i.published_at, status: statusOf(i), size_bytes: sizeOf(bodyOf(i)), updated_at: i.updated_at,
-  linked_sessions: hasSessions(i) ? linksOf(i.id).length : 0, release_at: releaseAt(i),
+  linked_sessions: hasSessions(i) ? new Set(slotLinksOf(i.id).map((l) => l.row.id)).size : 0, release_at: releaseAt(i), released_group_nos: releasedGroups(i),
   notify_on_release: i.kind !== 'resource' && i.notify_on_release === true,
   library_id: i.library_id, version_no: versionOf(i)?.version_no ?? null,
   latest_version_no: i.library_id ? latestOf(i.library_id) : null, link_count: i.library_id ? linksOfLib(i.library_id).length : 0,
@@ -361,6 +361,7 @@ export const mockContent: S6Api & S17Api = {
     if (!i) return fail('not_found');
     if (archivedTarget(i.cohort_id)) return fail('cohort_archived');
     if (publishedAt !== null && Number.isNaN(Date.parse(publishedAt))) return fail('invalid_input');
+    if (i.kind === 'tutorial' && publishedAt !== null && Date.parse(publishedAt) > Date.now() + 60_000) return fail('invalid_input', { field: 'tutorial_schedule' });
     i.published_at = publishedAt === null ? null : new Date(publishedAt).toISOString();
     if (i.kind !== 'resource' && typeof notify === 'boolean') i.notify_on_release = notify;
     i.updated_at = new Date().toISOString();
