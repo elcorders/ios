@@ -32,6 +32,7 @@ const S1_METHODS = [
   'adminAddClosureRange',
   // S14
   'adminListClassSessions', 'adminUpsertClassSession', 'adminDeleteClassSession', 'getMySessions',
+  'adminListClassTemplates', 'adminUpsertClassTemplate', 'adminDeleteClassTemplate',
   // S16
   'savePushSubscription', 'deletePushSubscription', 'getMyPush', 'adminPushStats', 'adminPushTest', 'adminPushSend',
   // S17

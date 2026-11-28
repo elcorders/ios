@@ -341,6 +341,8 @@ export interface AdminContentRow {
   notify_on_release: boolean;
   /** §S14: earliest linked session start still in the future, else null. */
   release_at: IsoDateTime | null;
+  /** §S24: groups whose linked class slot has started (ascending). */
+  released_group_nos: number[];
   /** §S17: library + version of this cohort link (null for resources). */
   library_id: Uuid | null;
   version_no: number | null;
@@ -728,8 +730,25 @@ export interface ClassSession {
   deliverables: string[];
   /** "HH:MM", "24:00" (whole day) or null (doesn't block the lab). */
   lab_block_until: string | null;
-  /** S19: `notify` = the item's notify_on_release. */
-  content: { id: Uuid; kind: ContentKind; title: string; status: ContentStatus; notify: boolean }[];
+  /** §S24: distinct items over all slots (read-only summary). */
+  content: { id: Uuid; kind: ContentKind; title: string; status: ContentStatus }[];
+  /** §S24: template the slot times came from (display only). */
+  template_id: Uuid | null;
+}
+
+/** §S24: when the "released" notification for a slot item goes out. */
+export type SlotNotify = 'slot_end' | 'at' | 'none';
+
+/** §S24: a tutorial/material that unlocks at a slot's start for that slot's groups. */
+export interface SlotContent {
+  id: Uuid;
+  kind: ContentKind;
+  title: string;
+  status: ContentStatus;
+  notify: SlotNotify;
+  notify_at: IsoDateTime | null;
+  /** The slot's release notification has been enqueued. */
+  notified: boolean;
 }
 
 /** S18: a time slot inside a class session; each group is in at most one slot. */
@@ -741,12 +760,26 @@ export interface ClassSessionSlot {
   starts_at: IsoDateTime;
   ends_at: IsoDateTime;
   group_nos: number[];
+  /** §S24: e.g. "Slot 1" (from the template), null if none. */
+  label: string | null;
+  /** §S24 */
+  content: SlotContent[];
+}
+
+export interface SlotContentInput {
+  content_id: Uuid;
+  notify: SlotNotify;
+  /** Required ⇔ notify = 'at'; not before the slot start. */
+  notify_at: IsoDateTime | null;
 }
 
 export interface ClassSlotInput {
+  label: string | null;
   start_time: string;
   end_time: string;
   group_nos: number[];
+  /** §S24 */
+  content: SlotContentInput[];
 }
 
 export interface ClassSessionInput {
@@ -758,9 +791,25 @@ export interface ClassSessionInput {
   slots: ClassSlotInput[];
   deliverables: string[];
   lab_block_until: string | null;
-  content_ids: Uuid[];
-  /** S19: subset of content_ids to notify students about when they open (others linked here are set to not notify). */
-  notify_content_ids: Uuid[];
+  /** §S24 */
+  template_id: Uuid | null;
+}
+
+/** §S24: shared by all cohorts. */
+export interface ClassTemplate {
+  id: Uuid;
+  name: string;
+  slots: { label: string; start_time: string; end_time: string }[];
+  /** Sessions created from this template. */
+  used_count: number;
+  updated_at: IsoDateTime;
+}
+
+export interface ClassTemplateInput {
+  id: Uuid | null;
+  name: string;
+  /** 1–6 */
+  slots: { label: string; start_time: string; end_time: string }[];
 }
 
 export interface MySession {
@@ -774,9 +823,9 @@ export interface MySession {
   title: string;
   group_nos: number[];
   /** S18: every slot of the session (start_time, end_time, group_nos), ordered by start. */
-  slots: { start_time: string; end_time: string; group_nos: number[] }[];
+  slots: { label: string | null; start_time: string; end_time: string; group_nos: number[] }[];
   deliverables: string[];
-  /** `available` = visible to the caller now (only then link to /c/:id). */
+  /** §S24: students — items on their own slot only. `available` = visible to the caller now (only then link to /c/:id). */
   content: { id: Uuid; kind: ContentKind; title: string; available: boolean }[];
 }
 
@@ -791,6 +840,10 @@ export interface S14Api {
   adminUpsertClassSession(input: ClassSessionInput): Promise<Result<ClassSession>>;
   adminDeleteClassSession(id: Uuid): Promise<Result<{ ok: true }>>;
   getMySessions(cohortId: Uuid): Promise<Result<MySessions>>;
+  /** §S24 */
+  adminListClassTemplates(): Promise<Result<ClassTemplate[]>>;
+  adminUpsertClassTemplate(input: ClassTemplateInput): Promise<Result<ClassTemplate>>;
+  adminDeleteClassTemplate(id: Uuid): Promise<Result<{ ok: true }>>;
 }
 
 // ───────────────────────── S16 — Web push (CONTRACT.md §S16) ─────────────────────────
