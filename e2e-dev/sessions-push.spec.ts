@@ -59,8 +59,9 @@ test('class sessions release materials per group, Home shows next session, lab b
   const future = await mk('E2E material future');
   const session = async (date: string, start: string, end: string, title: string, contentId: string) => {
     const r = await asAdmin.rpc('admin_upsert_class_session', {
-      p_id: null, p_cohort_id: cohort, p_date: date, p_start_time: start, p_end_time: end, p_title: title,
-      p_group_nos: [groupNo], p_deliverables: ['E2E deliverable'], p_lab_block_until: '16:00', p_content_ids: [contentId],
+      p_id: null, p_cohort_id: cohort, p_date: date, p_title: title,
+      p_slots: [{ label: null, start_time: start, end_time: end, group_nos: [groupNo], content: [{ content_id: contentId, notify: 'none', notify_at: null }] }],
+      p_deliverables: ['E2E deliverable'], p_lab_block_until: '16:00', p_template_id: null,
     });
     expect(r.error).toBeNull();
     return r.data as { id: string; lab_block_until: string };
@@ -71,9 +72,13 @@ test('class sessions release materials per group, Home shows next session, lab b
 
   // Admin view: statuses.
   const list = await asAdmin.rpc('admin_list_content', { p_kind: 'material', p_cohort_id: cohort });
-  const rows = list.data as { id: string; status: string; release_at: string | null }[];
-  expect(rows.find((r) => r.id === past)!.status).toBe('published');
+  const rows = list.data as { id: string; status: string; release_at: string | null; released_group_nos: number[] }[];
+  // S24: session-linked items stay on_session; released_group_nos lists the groups whose slot has started.
+  expect(rows.find((r) => r.id === past)!.status).toBe('on_session');
+  expect(rows.find((r) => r.id === past)!.released_group_nos).toEqual([groupNo]);
+  expect(rows.find((r) => r.id === past)!.release_at).toBeNull();
   expect(rows.find((r) => r.id === future)!.status).toBe('on_session');
+  expect(rows.find((r) => r.id === future)!.released_group_nos).toEqual([]);
   expect(rows.find((r) => r.id === future)!.release_at).not.toBeNull();
 
   // Student: past session's material is visible, the future one is not.

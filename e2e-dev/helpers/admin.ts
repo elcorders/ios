@@ -80,6 +80,9 @@ export async function cleanup(): Promise<void> {
   // S14: class sessions created by e2e specs are titled "E2E …" (links cascade).
   const cs = await sb.from('class_sessions').delete().like('title', 'E2E %');
   if (cs.error) throw new Error(`class session cleanup: ${cs.error.message}`);
+  // S24: class templates created by e2e specs are named "E2E …".
+  const ct = await sb.from('class_templates').delete().like('name', 'E2E %');
+  if (ct.error) throw new Error(`class template cleanup: ${ct.error.message}`);
   // S17: extra cohorts + libraries created by e2e specs ("E2E-…" codes, "E2E …" titles).
   const co = await sb.from('cohorts').delete().like('code', 'E2E-%');
   if (co.error) throw new Error(`cohort cleanup: ${co.error.message}`);

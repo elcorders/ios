@@ -90,9 +90,9 @@ test('notifications: booking confirmed, custom message, closure withdraw, class 
 
   // 4. Class reminder: session tomorrow for the student's group; tick at 18:05 Colombo today.
   const sess = await asAdmin.rpc('admin_upsert_class_session', {
-    p_id: null, p_cohort_id: cohort, p_date: colomboDate(1), p_start_time: null, p_end_time: null, p_title: 'E2E reminder session',
-    p_group_nos: null, p_slots: [{ start_time: '10:00', end_time: '12:00', group_nos: [groupNo] }],
-    p_deliverables: ['E2E bring laptop'], p_lab_block_until: null, p_content_ids: [], p_notify_content_ids: null,
+    p_id: null, p_cohort_id: cohort, p_date: colomboDate(1), p_title: 'E2E reminder session',
+    p_slots: [{ label: null, start_time: '10:00', end_time: '12:00', group_nos: [groupNo], content: [] }],
+    p_deliverables: ['E2E bring laptop'], p_lab_block_until: null, p_template_id: null,
   });
   expect(sess.error).toBeNull();
   const tick = await sb.rpc('push_tick', { p_now: `${colomboDate(0)}T18:05:00+05:30` });

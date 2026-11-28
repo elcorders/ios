@@ -159,36 +159,6 @@ export type Database = {
           },
         ]
       }
-      class_session_content: {
-        Row: {
-          content_id: string
-          session_id: string
-        }
-        Insert: {
-          content_id: string
-          session_id: string
-        }
-        Update: {
-          content_id?: string
-          session_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "class_session_content_content_id_fkey"
-            columns: ["content_id"]
-            isOneToOne: false
-            referencedRelation: "content_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "class_session_content_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "class_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       class_session_groups: {
         Row: {
           group_id: string
@@ -234,6 +204,7 @@ export type Database = {
           created_at: string
           end_time: string
           id: string
+          label: string | null
           session_id: string
           start_time: string
         }
@@ -241,6 +212,7 @@ export type Database = {
           created_at?: string
           end_time: string
           id?: string
+          label?: string | null
           session_id: string
           start_time: string
         }
@@ -248,6 +220,7 @@ export type Database = {
           created_at?: string
           end_time?: string
           id?: string
+          label?: string | null
           session_id?: string
           start_time?: string
         }
@@ -272,6 +245,7 @@ export type Database = {
           id: string
           lab_block_until: string | null
           start_time: string
+          template_id: string | null
           title: string
           updated_at: string
         }
@@ -285,6 +259,7 @@ export type Database = {
           id?: string
           lab_block_until?: string | null
           start_time: string
+          template_id?: string | null
           title: string
           updated_at?: string
         }
@@ -298,6 +273,7 @@ export type Database = {
           id?: string
           lab_block_until?: string | null
           start_time?: string
+          template_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -311,6 +287,119 @@ export type Database = {
           },
           {
             foreignKeyName: "class_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_sessions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "class_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_slot_content: {
+        Row: {
+          content_id: string
+          notified_at: string | null
+          notify: string
+          notify_at: string | null
+          slot_id: string
+        }
+        Insert: {
+          content_id: string
+          notified_at?: string | null
+          notify?: string
+          notify_at?: string | null
+          slot_id: string
+        }
+        Update: {
+          content_id?: string
+          notified_at?: string | null
+          notify?: string
+          notify_at?: string | null
+          slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_slot_content_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_slot_content_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "class_session_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_template_slots: {
+        Row: {
+          end_time: string
+          id: string
+          label: string
+          position: number
+          start_time: string
+          template_id: string
+        }
+        Insert: {
+          end_time: string
+          id?: string
+          label: string
+          position: number
+          start_time: string
+          template_id: string
+        }
+        Update: {
+          end_time?: string
+          id?: string
+          label?: string
+          position?: number
+          start_time?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_template_slots_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "class_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_templates_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1619,11 +1708,13 @@ export type Database = {
         Returns: Json
       }
       admin_delete_class_session: { Args: { p_id: string }; Returns: Json }
+      admin_delete_class_template: { Args: { p_id: string }; Returns: Json }
       admin_delete_closure: {
         Args: { p_id: string; p_whole_range?: boolean }
         Returns: Json
       }
       admin_delete_content: { Args: { p_id: string }; Returns: Json }
+      admin_delete_kiosk: { Args: { p_id: string }; Returns: Json }
       admin_delete_library: { Args: { p_id: string }; Returns: Json }
       admin_get_content: { Args: { p_id: string }; Returns: Json }
       admin_get_library: { Args: { p_id: string }; Returns: Json }
@@ -1641,6 +1732,7 @@ export type Database = {
         Args: { p_cohort_id: string }
         Returns: Json
       }
+      admin_list_class_templates: { Args: never; Returns: Json }
       admin_list_cohorts: { Args: never; Returns: Json[] }
       admin_list_content: {
         Args: {
@@ -1754,18 +1846,18 @@ export type Database = {
       admin_upsert_class_session: {
         Args: {
           p_cohort_id: string
-          p_content_ids: string[]
           p_date: string
           p_deliverables: string[]
-          p_end_time: string
-          p_group_nos: number[]
           p_id: string
           p_lab_block_until: string
-          p_notify_content_ids?: string[]
-          p_slots?: Json
-          p_start_time: string
+          p_slots: Json
+          p_template_id?: string
           p_title: string
         }
+        Returns: Json
+      }
+      admin_upsert_class_template: {
+        Args: { p_id: string; p_name: string; p_slots: Json }
         Returns: Json
       }
       admin_upsert_cohort: {
@@ -1851,6 +1943,10 @@ export type Database = {
         Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
         Returns: Json
       }
+      class_session_audit_slots: {
+        Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
+        Returns: Json
+      }
       class_session_end: {
         Args: { p_s: Database["public"]["Tables"]["class_sessions"]["Row"] }
         Returns: string
@@ -1889,6 +1985,7 @@ export type Database = {
           id: string
           lab_block_until: string | null
           start_time: string
+          template_id: string | null
           title: string
           updated_at: string
         }[]
@@ -1912,6 +2009,10 @@ export type Database = {
           p_sl: Database["public"]["Tables"]["class_session_slots"]["Row"]
         }
         Returns: string
+      }
+      class_template_json: {
+        Args: { p_t: Database["public"]["Tables"]["class_templates"]["Row"] }
+        Returns: Json
       }
       cohort_json: {
         Args: { c: Database["public"]["Tables"]["cohorts"]["Row"] }
